@@ -6,6 +6,8 @@ NSString * const QTPPluginDidLoadNotification = @"QTPPluginDidLoadNotification";
 
 static NSString * const QTPDisabledPluginIdentifiersKey = @"QTPDisabledPluginIdentifiers";
 static NSString * const QTPFFmpegPathKey = @"QTPFFmpegPath";
+static NSString * const QTPFluidSynthPathKey = @"QTPFluidSynthPath";
+static NSString * const QTPMIDISoundFontPathKey = @"QTPMIDISoundFontPath";
 
 @interface QTPPluginManagerController : NSObject
 @property (nonatomic, strong) NSWindow *window;
@@ -15,6 +17,8 @@ static NSString * const QTPFFmpegPathKey = @"QTPFFmpegPath";
 - (void)openPluginFolder:(id)sender;
 - (void)clearCaches:(id)sender;
 - (void)chooseFFmpeg:(id)sender;
+- (void)chooseFluidSynth:(id)sender;
+- (void)chooseMIDISoundFont:(id)sender;
 @end
 
 static QTPPluginManagerController *QTPSharedPluginManagerController;
@@ -235,7 +239,9 @@ static void QTPLoadPlugins(void)
     NSButton *folderButton = [NSButton buttonWithTitle:@"Open Plugin Folder" target:self action:@selector(openPluginFolder:)];
     NSButton *cacheButton = [NSButton buttonWithTitle:@"Clear Render Caches" target:self action:@selector(clearCaches:)];
     NSButton *ffmpegButton = [NSButton buttonWithTitle:@"Set ffmpeg..." target:self action:@selector(chooseFFmpeg:)];
-    for (NSButton *button in @[addButton, folderButton, cacheButton, ffmpegButton]) {
+    NSButton *fluidSynthButton = [NSButton buttonWithTitle:@"Set FluidSynth..." target:self action:@selector(chooseFluidSynth:)];
+    NSButton *soundFontButton = [NSButton buttonWithTitle:@"Set SoundFont..." target:self action:@selector(chooseMIDISoundFont:)];
+    for (NSButton *button in @[addButton, folderButton, cacheButton, ffmpegButton, fluidSynthButton, soundFontButton]) {
         button.bezelStyle = NSBezelStyleRounded;
         [buttonRow addArrangedSubview:button];
     }
@@ -249,6 +255,19 @@ static void QTPLoadPlugins(void)
     ffmpegLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [stackView addArrangedSubview:ffmpegLabel];
     [ffmpegLabel.widthAnchor constraintEqualToConstant:500].active = YES;
+
+    NSString *fluidSynthPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFluidSynthPathKey];
+    NSString *soundFontPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPMIDISoundFontPathKey];
+    NSString *midiRendererText = [NSString stringWithFormat:@"MIDI renderer: %@ / %@",
+                                  fluidSynthPath.length > 0 ? fluidSynthPath : @"Apple DLS fallback",
+                                  soundFontPath.length > 0 ? soundFontPath : @"auto SoundFont/DLS"];
+    NSTextField *midiRendererLabel = [NSTextField labelWithString:midiRendererText];
+    midiRendererLabel.font = [NSFont systemFontOfSize:12];
+    midiRendererLabel.textColor = NSColor.secondaryLabelColor;
+    midiRendererLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
+    midiRendererLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [stackView addArrangedSubview:midiRendererLabel];
+    [midiRendererLabel.widthAnchor constraintEqualToConstant:500].active = YES;
 
     for (NSDictionary<NSString *, id> *plugin in plugins) {
         NSString *identifier = plugin[@"identifier"];
@@ -366,6 +385,36 @@ static void QTPLoadPlugins(void)
 
     if ([panel runModal] == NSModalResponseOK) {
         [NSUserDefaults.standardUserDefaults setObject:panel.URL.path forKey:QTPFFmpegPathKey];
+        [self showWindow];
+    }
+}
+
+- (void)chooseFluidSynth:(__unused id)sender
+{
+    NSOpenPanel *panel = [NSOpenPanel openPanel];
+    panel.canChooseFiles = YES;
+    panel.canChooseDirectories = NO;
+    panel.allowsMultipleSelection = NO;
+    panel.prompt = @"Use";
+    panel.message = @"Choose the fluidsynth executable used by the MIDI plugin.";
+
+    if ([panel runModal] == NSModalResponseOK) {
+        [NSUserDefaults.standardUserDefaults setObject:panel.URL.path forKey:QTPFluidSynthPathKey];
+        [self showWindow];
+    }
+}
+
+- (void)chooseMIDISoundFont:(__unused id)sender
+{
+    NSOpenPanel *panel = [NSOpenPanel openPanel];
+    panel.canChooseFiles = YES;
+    panel.canChooseDirectories = NO;
+    panel.allowsMultipleSelection = NO;
+    panel.prompt = @"Use";
+    panel.message = @"Choose the SoundFont or DLS bank used by the MIDI plugin.";
+
+    if ([panel runModal] == NSModalResponseOK) {
+        [NSUserDefaults.standardUserDefaults setObject:panel.URL.path forKey:QTPMIDISoundFontPathKey];
         [self showWindow];
     }
 }

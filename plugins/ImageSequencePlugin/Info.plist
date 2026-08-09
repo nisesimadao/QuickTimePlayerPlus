@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>QTPImageSequencePlugin</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.quicktimeplayerplus.image-sequence</string>
+    <key>CFBundleName</key>
+    <string>QTP Image Sequence Plugin</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>QTPPluginDescription</key>
+    <string>Turns numbered image sequences or folders of frames into temporary MP4 movies for QuickTime.</string>
+    <key>QTPPluginSupportedExtensions</key>
+    <array>
+        <string>png</string>
+        <string>jpg</string>
+        <string>jpeg</string>
+        <string>tif</string>
+        <string>tiff</string>
+        <string>exr</string>
+        <string>dpx</string>
+    </array>
+</dict>
+</plist>

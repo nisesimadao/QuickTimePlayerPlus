@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>QTPGameAudioPlugin</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.quicktimeplayerplus.game-audio</string>
+    <key>CFBundleName</key>
+    <string>QTP Game Audio Plugin</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>QTPPluginDescription</key>
+    <string>Uses ffmpeg-compatible game or console music decoders to render VGM, NSF, SPC, PSF, and related files into temporary audio for QuickTime.</string>
+    <key>QTPPluginSupportedExtensions</key>
+    <array>
+        <string>vgm</string>
+        <string>vgz</string>
+        <string>nsf</string>
+        <string>spc</string>
+        <string>psf</string>
+        <string>psf2</string>
+        <string>minipsf</string>
+        <string>minipsf2</string>
+        <string>gym</string>
+        <string>ay</string>
+        <string>gbs</string>
+        <string>hes</string>
+        <string>kss</string>
+    </array>
+</dict>
+</plist>

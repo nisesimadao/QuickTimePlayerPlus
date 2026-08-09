@@ -24,6 +24,8 @@ fi
 
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PLUGIN_ROOT"
 cp resources/QuickTimePlayerPlus-Info.plist "$CONTENTS_DIR/Info.plist"
+cp -R resources/en.lproj "$RESOURCES_DIR/en.lproj"
+cp -R resources/ja.lproj "$RESOURCES_DIR/ja.lproj"
 cp build/QuickTimePlayerApplicationLauncher "$MACOS_DIR/QuickTime Player Plus"
 cp "$SOURCE_APP/Contents/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 cp -R "$SOURCE_APP" "$RESOURCES_DIR/QuickTime Player.app"

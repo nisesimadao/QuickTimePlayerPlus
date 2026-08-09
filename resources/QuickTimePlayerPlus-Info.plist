@@ -24,6 +24,25 @@
                 <string>divx</string>
                 <string>xvid</string>
                 <string>flv</string>
+                <string>gif</string>
+                <string>webp</string>
+                <string>avif</string>
+                <string>apng</string>
+                <string>vgm</string>
+                <string>vgz</string>
+                <string>nsf</string>
+                <string>spc</string>
+                <string>psf</string>
+                <string>psf2</string>
+                <string>minipsf</string>
+                <string>minipsf2</string>
+                <string>png</string>
+                <string>jpg</string>
+                <string>jpeg</string>
+                <string>tif</string>
+                <string>tiff</string>
+                <string>exr</string>
+                <string>dpx</string>
             </array>
             <key>CFBundleTypeName</key>
             <string>QuickTime Player Plus Supported Media</string>

@@ -77,6 +77,9 @@ sequenceDiagram
 
 - `QTPMIDIPlugin`: `.mid/.midi` を `.caf` にレンダリング
 - `QTPTranscodePlugin`: Ogg / WebM / Matroska / WMV などを `.mp4` / `.m4a` に変換
+- `QTPAnimatedImagePlugin`: GIF / WebP / AVIF / APNG を `.mp4` に変換
+- `QTPGameAudioPlugin`: VGM / NSF / SPC / PSF などを `.m4a` に変換
+- `QTPImageSequencePlugin`: 連番画像を `.mp4` に変換
 
 ## NSDocumentController の hook
 

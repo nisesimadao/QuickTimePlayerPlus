@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>QTPAnimatedImagePlugin</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.quicktimeplayerplus.animated-image</string>
+    <key>CFBundleName</key>
+    <string>QTP Animated Image Plugin</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>QTPPluginDescription</key>
+    <string>Converts animated GIF, WebP, AVIF, and APNG images into temporary MP4 movies for the normal QuickTime playback window.</string>
+    <key>QTPPluginSupportedExtensions</key>
+    <array>
+        <string>gif</string>
+        <string>webp</string>
+        <string>avif</string>
+        <string>apng</string>
+    </array>
+</dict>
+</plist>
