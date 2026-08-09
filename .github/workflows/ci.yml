@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build dylib and bundled plugins
+        run: make all
+      - name: Inspect artifacts
+        run: |
+          file build/QuickTimePlayerPlus.dylib
+          file build/PlugIns/QTPMIDIPlugin.qtplugin/Contents/MacOS/QTPMIDIPlugin
+          file build/PlugIns/QTPTranscodePlugin.qtplugin/Contents/MacOS/QTPTranscodePlugin

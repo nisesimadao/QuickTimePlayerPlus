@@ -1,0 +1,11 @@
+.DS_Store
+.codex/
+build/
+dist/
+*.mid
+*.midi
+*.caf
+*.log
+QuickTime Player.app/
+QuickTime Player+.app/
+*.xcuserstate

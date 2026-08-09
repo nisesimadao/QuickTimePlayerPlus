@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>QTPTranscodePlugin</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.quicktimeplayerplus.transcode</string>
+    <key>CFBundleName</key>
+    <string>QTP Legacy Media Transcode Plugin</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>QTPPluginDescription</key>
+    <string>Uses ffmpeg to bridge common QuickTime 7-era add-on formats such as Ogg, WebM, Matroska, Windows Media, AVI, DivX, Xvid, and FLV into QuickTime-readable temporary media.</string>
+    <key>QTPPluginSupportedExtensions</key>
+    <array>
+        <string>ogg</string>
+        <string>oga</string>
+        <string>ogv</string>
+        <string>webm</string>
+        <string>mkv</string>
+        <string>wmv</string>
+        <string>wma</string>
+        <string>avi</string>
+        <string>divx</string>
+        <string>xvid</string>
+        <string>flv</string>
+    </array>
+</dict>
+</plist>
