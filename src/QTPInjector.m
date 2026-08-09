@@ -210,109 +210,261 @@ static void QTPLoadPlugins(void)
     }
 }
 
+static NSTextField *QTPLabel(NSString *text, NSFont *font, NSColor *color)
+{
+    NSTextField *label = [NSTextField labelWithString:text ?: @""];
+    label.font = font;
+    label.textColor = color;
+    label.lineBreakMode = NSLineBreakByWordWrapping;
+    label.maximumNumberOfLines = 0;
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    return label;
+}
+
+static NSButton *QTPActionButton(NSString *title, id target, SEL action)
+{
+    NSButton *button = [NSButton buttonWithTitle:title target:target action:action];
+    button.bezelStyle = NSBezelStyleRounded;
+    button.controlSize = NSControlSizeRegular;
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    [button.heightAnchor constraintGreaterThanOrEqualToConstant:30].active = YES;
+    return button;
+}
+
+static NSView *QTPSeparator(void)
+{
+    NSBox *separator = [[NSBox alloc] initWithFrame:NSZeroRect];
+    separator.boxType = NSBoxSeparator;
+    separator.translatesAutoresizingMaskIntoConstraints = NO;
+    return separator;
+}
+
+static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, NSButton *button)
+{
+    NSStackView *row = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    row.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    row.alignment = NSLayoutAttributeCenterY;
+    row.spacing = 12;
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+
+    NSStackView *labels = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    labels.orientation = NSUserInterfaceLayoutOrientationVertical;
+    labels.alignment = NSLayoutAttributeLeading;
+    labels.spacing = 2;
+    labels.translatesAutoresizingMaskIntoConstraints = NO;
+
+    NSTextField *titleLabel = QTPLabel(title, [NSFont systemFontOfSize:NSFont.systemFontSize weight:NSFontWeightSemibold], NSColor.labelColor);
+    NSString *displayValue = value.length > 0 ? value : fallback;
+    NSTextField *valueLabel = QTPLabel(displayValue, [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
+    valueLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
+    valueLabel.maximumNumberOfLines = 1;
+    [labels addArrangedSubview:titleLabel];
+    [labels addArrangedSubview:valueLabel];
+
+    [row addArrangedSubview:labels];
+    [row addArrangedSubview:button];
+    [labels setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [button setContentHuggingPriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
+    return row;
+}
+
 @implementation QTPPluginManagerController
 
 - (void)showWindow
 {
+    [self.window close];
+
     NSMutableSet<NSString *> *disabledIdentifiers = QTPDisabledPluginIdentifiers();
     NSArray<NSDictionary<NSString *, id> *> *plugins = QTPInstalledPluginInfos();
 
-    NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 560, 420)
+    NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 860, 580)
                                                    styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                                                      backing:NSBackingStoreBuffered
                                                        defer:NO];
-    window.title = @"QuickTime Player Plus Plugins";
+    window.title = @"Plugin Manager";
+    window.minSize = NSMakeSize(760, 500);
     window.releasedWhenClosed = NO;
 
-    NSStackView *stackView = [[NSStackView alloc] initWithFrame:NSZeroRect];
-    stackView.orientation = NSUserInterfaceLayoutOrientationVertical;
-    stackView.alignment = NSLayoutAttributeLeading;
-    stackView.spacing = 12;
-    stackView.edgeInsets = NSEdgeInsetsMake(18, 18, 18, 18);
-    stackView.translatesAutoresizingMaskIntoConstraints = NO;
+    NSView *contentView = [[NSView alloc] initWithFrame:NSZeroRect];
+    contentView.translatesAutoresizingMaskIntoConstraints = NO;
+    window.contentView = contentView;
 
-    NSTextField *message = [NSTextField labelWithString:@"Enable or disable installed plugins. Changes apply the next time QuickTime Player Plus starts."];
-    message.font = [NSFont systemFontOfSize:12];
-    message.textColor = NSColor.secondaryLabelColor;
-    message.lineBreakMode = NSLineBreakByWordWrapping;
-    message.maximumNumberOfLines = 2;
-    message.translatesAutoresizingMaskIntoConstraints = NO;
-    [stackView addArrangedSubview:message];
-    [message.widthAnchor constraintEqualToConstant:500].active = YES;
+    NSStackView *rootStack = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    rootStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    rootStack.alignment = NSLayoutAttributeLeading;
+    rootStack.spacing = 18;
+    rootStack.edgeInsets = NSEdgeInsetsMake(22, 24, 24, 24);
+    rootStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [contentView addSubview:rootStack];
 
-    NSStackView *buttonRow = [[NSStackView alloc] initWithFrame:NSZeroRect];
-    buttonRow.orientation = NSUserInterfaceLayoutOrientationHorizontal;
-    buttonRow.spacing = 8;
+    NSTextField *titleLabel = QTPLabel(@"QuickTime Player Plus", [NSFont systemFontOfSize:22 weight:NSFontWeightSemibold], NSColor.labelColor);
+    NSTextField *subtitleLabel = QTPLabel(@"Manage installed plugins, renderer paths, and temporary render caches.", [NSFont systemFontOfSize:NSFont.systemFontSize], NSColor.secondaryLabelColor);
+    subtitleLabel.maximumNumberOfLines = 1;
+    NSStackView *headerStack = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    headerStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    headerStack.alignment = NSLayoutAttributeLeading;
+    headerStack.spacing = 3;
+    headerStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [headerStack addArrangedSubview:titleLabel];
+    [headerStack addArrangedSubview:subtitleLabel];
+    [rootStack addArrangedSubview:headerStack];
 
-    NSButton *addButton = [NSButton buttonWithTitle:@"Add Plugin..." target:self action:@selector(addPlugin:)];
-    NSButton *folderButton = [NSButton buttonWithTitle:@"Open Plugin Folder" target:self action:@selector(openPluginFolder:)];
-    NSButton *cacheButton = [NSButton buttonWithTitle:@"Clear Render Caches" target:self action:@selector(clearCaches:)];
-    NSButton *ffmpegButton = [NSButton buttonWithTitle:@"Set ffmpeg..." target:self action:@selector(chooseFFmpeg:)];
-    NSButton *fluidSynthButton = [NSButton buttonWithTitle:@"Set FluidSynth..." target:self action:@selector(chooseFluidSynth:)];
-    NSButton *soundFontButton = [NSButton buttonWithTitle:@"Set SoundFont..." target:self action:@selector(chooseMIDISoundFont:)];
-    for (NSButton *button in @[addButton, folderButton, cacheButton, ffmpegButton, fluidSynthButton, soundFontButton]) {
-        button.bezelStyle = NSBezelStyleRounded;
-        [buttonRow addArrangedSubview:button];
-    }
-    [stackView addArrangedSubview:buttonRow];
+    NSStackView *mainStack = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    mainStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    mainStack.alignment = NSLayoutAttributeTop;
+    mainStack.spacing = 22;
+    mainStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [rootStack addArrangedSubview:mainStack];
 
-    NSString *ffmpegPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFFmpegPathKey];
-    NSTextField *ffmpegLabel = [NSTextField labelWithString:ffmpegPath.length > 0 ? [NSString stringWithFormat:@"ffmpeg: %@", ffmpegPath] : @"ffmpeg: auto-detect (/opt/homebrew/bin/ffmpeg, /usr/local/bin/ffmpeg)"];
-    ffmpegLabel.font = [NSFont systemFontOfSize:12];
-    ffmpegLabel.textColor = NSColor.secondaryLabelColor;
-    ffmpegLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
-    ffmpegLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [stackView addArrangedSubview:ffmpegLabel];
-    [ffmpegLabel.widthAnchor constraintEqualToConstant:500].active = YES;
+    NSStackView *pluginColumn = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    pluginColumn.orientation = NSUserInterfaceLayoutOrientationVertical;
+    pluginColumn.alignment = NSLayoutAttributeLeading;
+    pluginColumn.spacing = 12;
+    pluginColumn.translatesAutoresizingMaskIntoConstraints = NO;
 
-    NSString *fluidSynthPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFluidSynthPathKey];
-    NSString *soundFontPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPMIDISoundFontPathKey];
-    NSString *midiRendererText = [NSString stringWithFormat:@"MIDI renderer: %@ / %@",
-                                  fluidSynthPath.length > 0 ? fluidSynthPath : @"Apple DLS fallback",
-                                  soundFontPath.length > 0 ? soundFontPath : @"auto SoundFont/DLS"];
-    NSTextField *midiRendererLabel = [NSTextField labelWithString:midiRendererText];
-    midiRendererLabel.font = [NSFont systemFontOfSize:12];
-    midiRendererLabel.textColor = NSColor.secondaryLabelColor;
-    midiRendererLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
-    midiRendererLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [stackView addArrangedSubview:midiRendererLabel];
-    [midiRendererLabel.widthAnchor constraintEqualToConstant:500].active = YES;
+    NSStackView *pluginHeaderRow = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    pluginHeaderRow.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    pluginHeaderRow.alignment = NSLayoutAttributeCenterY;
+    pluginHeaderRow.spacing = 10;
+    pluginHeaderRow.translatesAutoresizingMaskIntoConstraints = NO;
+    NSTextField *pluginHeader = QTPLabel(@"Installed Plugins", [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
+    NSTextField *pluginCount = QTPLabel([NSString stringWithFormat:@"%lu found", plugins.count], [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
+    [pluginHeaderRow addArrangedSubview:pluginHeader];
+    [pluginHeaderRow addArrangedSubview:pluginCount];
+    [pluginColumn addArrangedSubview:pluginHeaderRow];
+
+    NSScrollView *pluginScrollView = [[NSScrollView alloc] initWithFrame:NSZeroRect];
+    pluginScrollView.hasVerticalScroller = YES;
+    pluginScrollView.borderType = NSNoBorder;
+    pluginScrollView.drawsBackground = NO;
+    pluginScrollView.translatesAutoresizingMaskIntoConstraints = NO;
+
+    NSStackView *pluginList = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    pluginList.orientation = NSUserInterfaceLayoutOrientationVertical;
+    pluginList.alignment = NSLayoutAttributeLeading;
+    pluginList.spacing = 10;
+    pluginList.edgeInsets = NSEdgeInsetsMake(0, 0, 0, 8);
+    pluginList.translatesAutoresizingMaskIntoConstraints = NO;
 
     for (NSDictionary<NSString *, id> *plugin in plugins) {
         NSString *identifier = plugin[@"identifier"];
-        NSButton *checkbox = [NSButton checkboxWithTitle:plugin[@"name"] target:self action:@selector(togglePlugin:)];
+        BOOL enabled = ![disabledIdentifiers containsObject:identifier];
+
+        NSView *card = [[NSView alloc] initWithFrame:NSZeroRect];
+        card.wantsLayer = YES;
+        card.layer.cornerRadius = 8;
+        card.layer.borderWidth = 1;
+        card.layer.borderColor = NSColor.separatorColor.CGColor;
+        card.layer.backgroundColor = NSColor.controlBackgroundColor.CGColor;
+        card.translatesAutoresizingMaskIntoConstraints = NO;
+
+        NSStackView *cardStack = [[NSStackView alloc] initWithFrame:NSZeroRect];
+        cardStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+        cardStack.alignment = NSLayoutAttributeLeading;
+        cardStack.spacing = 6;
+        cardStack.edgeInsets = NSEdgeInsetsMake(12, 12, 12, 12);
+        cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+        [card addSubview:cardStack];
+
+        NSStackView *nameRow = [[NSStackView alloc] initWithFrame:NSZeroRect];
+        nameRow.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+        nameRow.alignment = NSLayoutAttributeCenterY;
+        nameRow.spacing = 8;
+        nameRow.translatesAutoresizingMaskIntoConstraints = NO;
+
+        NSButton *checkbox = [NSButton checkboxWithTitle:plugin[@"name"] ?: @"Plugin" target:self action:@selector(togglePlugin:)];
         checkbox.identifier = identifier;
-        checkbox.state = [disabledIdentifiers containsObject:identifier] ? NSControlStateValueOff : NSControlStateValueOn;
-        checkbox.font = [NSFont systemFontOfSize:14 weight:NSFontWeightSemibold];
-        [stackView addArrangedSubview:checkbox];
+        checkbox.state = enabled ? NSControlStateValueOn : NSControlStateValueOff;
+        checkbox.font = [NSFont systemFontOfSize:NSFont.systemFontSize weight:NSFontWeightSemibold];
+        checkbox.translatesAutoresizingMaskIntoConstraints = NO;
+        checkbox.toolTip = @"Changes apply the next time QuickTime Player Plus starts.";
+        NSTextField *stateLabel = QTPLabel(enabled ? @"Enabled" : @"Disabled", [NSFont systemFontOfSize:NSFont.smallSystemFontSize], enabled ? NSColor.systemGreenColor : NSColor.secondaryLabelColor);
+        [nameRow addArrangedSubview:checkbox];
+        [nameRow addArrangedSubview:stateLabel];
+        [cardStack addArrangedSubview:nameRow];
 
         NSArray<NSString *> *extensions = plugin[@"extensions"];
-        NSString *extensionText = extensions.count > 0 ? [NSString stringWithFormat:@"Extensions: %@", [extensions componentsJoinedByString:@", "]] : @"";
-        NSString *detailText = [@[plugin[@"description"], extensionText] componentsJoinedByString:@"\n"];
-        NSTextField *detail = [NSTextField labelWithString:detailText];
-        detail.font = [NSFont systemFontOfSize:12];
-        detail.textColor = NSColor.secondaryLabelColor;
-        detail.lineBreakMode = NSLineBreakByWordWrapping;
-        detail.maximumNumberOfLines = 4;
-        detail.translatesAutoresizingMaskIntoConstraints = NO;
-        [stackView addArrangedSubview:detail];
-        [detail.widthAnchor constraintEqualToConstant:500].active = YES;
+        NSString *extensionText = extensions.count > 0 ? [extensions componentsJoinedByString:@", "] : @"No declared extensions";
+        NSString *description = [plugin[@"description"] length] > 0 ? plugin[@"description"] : @"No description provided.";
+        NSTextField *descriptionLabel = QTPLabel(description, [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
+        descriptionLabel.maximumNumberOfLines = 2;
+        NSTextField *extensionLabel = QTPLabel([NSString stringWithFormat:@"Extensions: %@", extensionText], [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular], NSColor.tertiaryLabelColor);
+        extensionLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        extensionLabel.maximumNumberOfLines = 1;
+        NSTextField *pathLabel = QTPLabel(plugin[@"path"], [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.tertiaryLabelColor);
+        pathLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
+        pathLabel.maximumNumberOfLines = 1;
+        [cardStack addArrangedSubview:descriptionLabel];
+        [cardStack addArrangedSubview:extensionLabel];
+        [cardStack addArrangedSubview:pathLabel];
+
+        [cardStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor].active = YES;
+        [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor].active = YES;
+        [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor].active = YES;
+        [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor].active = YES;
+        [card.widthAnchor constraintEqualToConstant:500].active = YES;
+        [pluginList addArrangedSubview:card];
     }
 
     if (plugins.count == 0) {
-        NSTextField *empty = [NSTextField labelWithString:@"No .qtplugin bundles were found."];
-        empty.textColor = NSColor.secondaryLabelColor;
-        [stackView addArrangedSubview:empty];
+        NSTextField *empty = QTPLabel(@"No .qtplugin bundles were found.", [NSFont systemFontOfSize:NSFont.systemFontSize], NSColor.secondaryLabelColor);
+        [pluginList addArrangedSubview:empty];
     }
 
-    NSScrollView *scrollView = [[NSScrollView alloc] initWithFrame:NSZeroRect];
-    scrollView.documentView = stackView;
-    scrollView.hasVerticalScroller = YES;
-    scrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    window.contentView = scrollView;
+    pluginScrollView.documentView = pluginList;
+    [pluginColumn addArrangedSubview:pluginScrollView];
+
+    NSStackView *pluginActions = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    pluginActions.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    pluginActions.alignment = NSLayoutAttributeCenterY;
+    pluginActions.spacing = 8;
+    pluginActions.translatesAutoresizingMaskIntoConstraints = NO;
+    [pluginActions addArrangedSubview:QTPActionButton(@"Add Plugin...", self, @selector(addPlugin:))];
+    [pluginActions addArrangedSubview:QTPActionButton(@"Open Folder", self, @selector(openPluginFolder:))];
+    [pluginColumn addArrangedSubview:pluginActions];
+
+    NSStackView *settingsColumn = [[NSStackView alloc] initWithFrame:NSZeroRect];
+    settingsColumn.orientation = NSUserInterfaceLayoutOrientationVertical;
+    settingsColumn.alignment = NSLayoutAttributeLeading;
+    settingsColumn.spacing = 14;
+    settingsColumn.translatesAutoresizingMaskIntoConstraints = NO;
+
+    NSTextField *settingsHeader = QTPLabel(@"Renderer Settings", [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
+    [settingsColumn addArrangedSubview:settingsHeader];
+
+    NSString *ffmpegPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFFmpegPathKey];
+    NSString *fluidSynthPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFluidSynthPathKey];
+    NSString *soundFontPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPMIDISoundFontPathKey];
+    [settingsColumn addArrangedSubview:QTPPathRow(@"ffmpeg", ffmpegPath, @"Auto-detect: /opt/homebrew/bin/ffmpeg or /usr/local/bin/ffmpeg", QTPActionButton(@"Choose...", self, @selector(chooseFFmpeg:)))];
+    [settingsColumn addArrangedSubview:QTPPathRow(@"FluidSynth", fluidSynthPath, @"Optional. Apple DLS is used when FluidSynth is unavailable.", QTPActionButton(@"Choose...", self, @selector(chooseFluidSynth:)))];
+    [settingsColumn addArrangedSubview:QTPPathRow(@"MIDI SoundFont", soundFontPath, @"Auto SoundFont/DLS lookup", QTPActionButton(@"Choose...", self, @selector(chooseMIDISoundFont:)))];
+
+    [settingsColumn addArrangedSubview:QTPSeparator()];
+
+    NSTextField *maintenanceHeader = QTPLabel(@"Maintenance", [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
+    NSTextField *maintenanceText = QTPLabel(@"Rendered MIDI, transcode, animated image, and image sequence outputs are temporary. Clear them if playback tests start using stale media.", [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
+    [settingsColumn addArrangedSubview:maintenanceHeader];
+    [settingsColumn addArrangedSubview:maintenanceText];
+    [settingsColumn addArrangedSubview:QTPActionButton(@"Clear Render Caches", self, @selector(clearCaches:))];
+
+    [settingsColumn addArrangedSubview:QTPSeparator()];
+
+    NSTextField *restartLabel = QTPLabel(@"Plugin enable/disable changes apply after restarting QuickTime Player Plus.", [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
+    [settingsColumn addArrangedSubview:restartLabel];
+
+    [mainStack addArrangedSubview:pluginColumn];
+    [mainStack addArrangedSubview:settingsColumn];
+    [pluginColumn.widthAnchor constraintGreaterThanOrEqualToConstant:520].active = YES;
+    [settingsColumn.widthAnchor constraintGreaterThanOrEqualToConstant:260].active = YES;
+    [pluginScrollView.heightAnchor constraintGreaterThanOrEqualToConstant:360].active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [stackView.widthAnchor constraintEqualToAnchor:scrollView.contentView.widthAnchor],
+        [rootStack.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
+        [rootStack.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
+        [rootStack.topAnchor constraintEqualToAnchor:contentView.topAnchor],
+        [rootStack.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor],
+        [mainStack.widthAnchor constraintEqualToAnchor:rootStack.widthAnchor constant:-48],
+        [pluginList.widthAnchor constraintEqualToAnchor:pluginScrollView.contentView.widthAnchor],
     ]];
 
     self.window = window;
