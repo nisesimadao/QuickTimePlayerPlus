@@ -8,17 +8,22 @@
 &nbsp;![macOS](https://img.shields.io/badge/macOS-Apple_Silicon-black)
 &nbsp;![plugins](https://img.shields.io/badge/plugins-.qtplugin-6f42c1)
 
-QuickTime Player にプラグイン機構を足す実験です。起動時に小さな dylib を注入し、
-`*.qtplugin` bundle を読み込みます。MIDI や QuickTime 7 時代の外部 component が担っていた
-形式を、今の QuickTime が読める一時メディアへ変換して、**QuickTime 標準の再生ウィンドウ**で
-開きます。
+QuickTime Player Plus is an experimental plugin loader and legacy media bridge for
+the modern macOS QuickTime Player. It launches a locally copied QuickTime Player
+with a small injected dylib, loads `*.qtplugin` bundles, and lets plugins turn
+unsupported inputs into temporary media files that open in the standard
+QuickTime playback window.
 
-> **非公式・再配布制約** — このリポジトリは Apple の QuickTime Player 本体を含みません。
-> Release の `.pkg` はインストール先 Mac にある `/System/Applications/QuickTime Player.app`
-> をその場で `/Applications/QuickTime Player Plus.app` へコピーし、自作ローダーとプラグインだけを
-> 追加します。Apple Inc. とは無関係です。
+[日本語版 README](README-ja.md)
 
-## まず試すなら
+> **Unofficial project**: this repository does not contain or redistribute
+> Apple's QuickTime Player application. The release package copies
+> `/System/Applications/QuickTime Player.app` from the user's own Mac into
+> `/Applications/QuickTime Player Plus.app`, then adds only the open source
+> launcher, loader, icon, and plugins from this project. This project is not
+> affiliated with Apple Inc.
+
+## Quick Start
 
 ```sh
 git clone https://github.com/nisesimadao/QuickTimePlayerPlus.git
@@ -27,27 +32,27 @@ make install-application
 open -n -a "/Applications/QuickTime Player Plus.app" ~/Downloads/example.mid
 ```
 
-`make install-application` は `/System/Applications/QuickTime Player.app` を
-`/Applications/QuickTime Player Plus.app` の内側へコピーし、自作 launcher / plugin loader /
-プリインストールプラグインを組み込みます。
+`make install-application` creates `/Applications/QuickTime Player Plus.app` by
+copying the system QuickTime Player into the wrapper app and installing the
+launcher, plugin loader, custom icon, and bundled plugins.
 
-## 入っているもの
+## Included Components
 
-| 役割 | ファイル | 内容 |
+| Role | File | Description |
 | --- | --- | --- |
-| パッチ / ローダー | `QuickTimePlayerPlus.dylib` | QuickTime 起動時に `*.qtplugin` を探して読み込む |
-| MIDI plugin | `QTPMIDIPlugin.qtplugin` | `.mid/.midi` を一時 `.caf` にレンダリングして QuickTime に渡す |
-| Legacy media plugin | `QTPTranscodePlugin.qtplugin` | Ogg / WebM / Matroska / WMV / WMA / AVI / DivX / Xvid / FLV を ffmpeg で QuickTime 向けへ変換 |
-| Animated image plugin | `QTPAnimatedImagePlugin.qtplugin` | GIF / WebP / AVIF / APNG を一時 MP4 に変換 |
-| Game audio plugin | `QTPGameAudioPlugin.qtplugin` | VGM / NSF / SPC / PSF などを ffmpeg 対応 decoder で一時 M4A に変換 |
-| Image sequence plugin | `QTPImageSequencePlugin.qtplugin` | `frame_0001.png` 形式の連番画像を一時 MP4 に変換 |
-| 管理画面 | app menu | `QuickTime Player Plus Plugins...` で次回起動時の有効/無効を切り替える |
+| Loader patch | `QuickTimePlayerPlus.dylib` | Finds and loads `*.qtplugin` bundles at QuickTime launch |
+| MIDI plugin | `QTPMIDIPlugin.qtplugin` | Renders `.mid/.midi` to temporary audio and opens it in QuickTime |
+| Legacy media plugin | `QTPTranscodePlugin.qtplugin` | Bridges Ogg, WebM, Matroska, WMV, WMA, AVI, DivX, Xvid, and FLV through ffmpeg |
+| Animated image plugin | `QTPAnimatedImagePlugin.qtplugin` | Converts GIF, WebP, AVIF, and APNG to temporary MP4 movies |
+| Game audio plugin | `QTPGameAudioPlugin.qtplugin` | Opens VGM, NSF, SPC, PSF, and related files when the local ffmpeg build can decode them |
+| Image sequence plugin | `QTPImageSequencePlugin.qtplugin` | Converts numbered frame sequences such as `frame_0001.png` to MP4 |
+| Plugin manager | App menu | `QuickTime Player Plus Plugins...` toggles plugins and manages renderer paths |
 
-QuickTime 7 時代によく使われた Perian / Flip4Mac / XiphQT / DivX / Xvid 系の役割を、
-今の QuickTime の codec component として復活させるのではなく、プラグインごとの
-変換ブリッジとして実装しています。
+The goal is not to revive old QuickTime component APIs directly. Instead,
+QuickTime Player Plus uses focused bridge plugins that produce media formats
+modern QuickTime can already play.
 
-## 仕組み
+## How It Works
 
 ```mermaid
 flowchart LR
@@ -60,145 +65,170 @@ flowchart LR
   PluginDir --> Animated[QTPAnimatedImagePlugin.qtplugin]
   PluginDir --> Game[QTPGameAudioPlugin.qtplugin]
   PluginDir --> Sequence[QTPImageSequencePlugin.qtplugin]
-  MIDI --> CAF[Temporary CAF]
+  MIDI --> Audio[Temporary WAV/CAF]
   Transcode --> MP4[Temporary MP4/M4A]
   Animated --> MP4
   Game --> M4A[Temporary M4A]
   Sequence --> MP4
-  CAF --> QuickTime
+  Audio --> QuickTime
   MP4 --> QuickTime
   M4A --> QuickTime
 ```
 
-外側の `QuickTime Player Plus.app` は Finder から書類を受け取る launcher です。
-内側にコピーした Apple の QuickTime Player を、プラグインローダー付きで起動します。
-ローダーは `*.qtplugin` bundle を読み、各プラグインが必要な形式だけを一時メディアへ変換して、
-最後は QuickTime 標準の再生ウィンドウに戻します。
+The wrapper app receives Finder documents, launches the copied QuickTime Player,
+and injects the loader with `DYLD_INSERT_LIBRARIES`. Plugins hook selected open
+paths, handle only their own extensions, write temporary media under
+`$TMPDIR/QuickTimePlayerPlus`, then call back into QuickTime's normal document
+opening flow.
 
-## プラグインの置き場所と追加
+## Plugin Locations
 
-プリインストールプラグイン:
+Bundled plugins in local builds:
 
 ```text
 QuickTime Player Plus.app/
 └── Contents/PlugIns/QuickTimePlayerPlus/
     ├── QTPMIDIPlugin.qtplugin
-    └── QTPTranscodePlugin.qtplugin
+    ├── QTPTranscodePlugin.qtplugin
+    └── ...
 ```
 
-ユーザー追加プラグイン:
+Plugins installed by the release package:
+
+```text
+/Library/Application Support/QuickTimePlayerPlus/PlugIns/
+```
+
+User-added plugins:
 
 ```text
 ~/Library/Application Support/QuickTimePlayer+/PlugIns/
 ```
 
-開発中だけ追加する場合:
+Development-only plugin path:
 
 ```sh
 QTP_PLUGIN_PATH="/path/to/PlugIns" open -n -a "/Applications/QuickTime Player Plus.app" file.mid
 ```
 
-管理画面はアプリメニューの **QuickTime Player Plus Plugins...** から開きます。
+Open **QuickTime Player Plus Plugins...** from the app menu to manage plugins.
 
-- チェックボックス: 次回起動時の有効/無効を切り替える
-- Add Plugin...: `.qtplugin` bundle をユーザープラグインフォルダへコピーする
-- Open Plugin Folder: ユーザープラグインフォルダを Finder で開く
-- Clear Render Caches: MIDI / transcode の一時ファイルを削除する
-- Set ffmpeg...: Legacy media plugin が使う `ffmpeg` 実行ファイルを指定する
-- Set FluidSynth...: MIDI plugin が優先使用する `fluidsynth` 実行ファイルを指定する
-- Set SoundFont...: MIDI plugin が FluidSynth で使う `.sf2/.sf3/.dls` を指定する
+- Checkboxes enable or disable plugins on the next launch.
+- **Add Plugin...** copies a `.qtplugin` bundle into the user plugin folder.
+- **Open Plugin Folder** opens the user plugin folder in Finder.
+- **Clear Render Caches** removes temporary render outputs.
+- **Set ffmpeg...** selects the ffmpeg binary for bridge plugins.
+- **Set FluidSynth...** selects the FluidSynth binary for MIDI rendering.
+- **Set SoundFont...** selects the `.sf2/.sf3/.dls` file used by FluidSynth.
 
-## MIDI レンダリング
+## MIDI Rendering
 
-MIDI plugin は次の順でレンダリングします。
+The MIDI plugin renders in this order:
 
-1. `fluidsynth` と SoundFont / DLS が見つかる場合は FluidSynth で `.wav` へレンダリング
-2. 見つからない場合は Apple の DLS Music Device で `.caf` へレンダリング
+1. FluidSynth, when both `fluidsynth` and a SoundFont or DLS file are available.
+2. Apple's DLS Music Device as a fallback.
 
-Apple DLS fallback でも velocity / program change は MIDI イベントとして処理されますが、
-FluidSynth + General MIDI / GS SoundFont の方が一般的な MIDI プレーヤーに近い鳴り方に
-なりやすいです。SoundFont は管理画面から指定できます。
+Apple's fallback handles MIDI events such as velocity and program changes, but
+many common MIDI players sound closer to a General MIDI or GS SoundFont. For the
+best result, install FluidSynth and choose a SoundFont in the plugin manager.
 
 ```sh
 brew install fluid-synth
 ```
 
-Game audio plugin も `ffmpeg` に依存します。Homebrew の ffmpeg build に game music decoder
-が入っていない場合、対象拡張子を認識しても変換は失敗します。その場合は libgme / vgmstream
-対応の ffmpeg か、今後の専用 renderer plugin が必要です。
+The Game Audio plugin also depends on ffmpeg. Some ffmpeg builds do not include
+game music decoders, so files such as `.vgm` or `.spc` may need a build with
+libgme or vgmstream support.
 
-## ビルド
+## Building
 
-要件:
+Requirements:
 
 - macOS on Apple Silicon
 - Xcode Command Line Tools
-- `ffmpeg`（Legacy media plugin 用。Homebrew なら `/opt/homebrew/bin/ffmpeg`）
+- `ffmpeg` for the legacy media, animated image, image sequence, and game audio bridges
 
 ```sh
 make all
-```
-
-通常起動できるアプリを `/Applications` に作る:
-
-```sh
 make install-application
 ```
 
-開く:
+Open the installed app:
 
 ```sh
 open -n -a "/Applications/QuickTime Player Plus.app"
 open -n -a "/Applications/QuickTime Player Plus.app" ~/Downloads/example.mid
 ```
 
-## プラグインの形
+## Plugin API
 
-プラグインは bundle です。`Contents/Info.plist` に通常の bundle 情報と
-`QTPPluginSupportedExtensions` / `QTPPluginDescription` を入れ、実行ファイル側で
-`QTPPluginMain` を export します。
+Plugins are standard macOS bundles with a `.qtplugin` extension. Each bundle
+exports `QTPPluginMain`.
 
 ```objc
+#import <Foundation/Foundation.h>
+#import "QTPPlugin.h"
+
 void QTPPluginMain(void)
 {
-    // Hook QuickTime behavior here.
+    QTPLog(@"MyPlugin loaded");
 }
 ```
 
-ローダーは以下を探します。
+`Contents/Info.plist` can declare `QTPPluginSupportedExtensions` and
+`QTPPluginDescription` for the plugin manager. See
+[docs/plugin-development.md](docs/plugin-development.md) for the full plugin
+guide.
 
-- `QTP_PLUGIN_PATH`
-- `QuickTime Player Plus.app/Contents/PlugIns/QuickTimePlayerPlus`
-- `~/Library/Application Support/QuickTimePlayer+/PlugIns`
+## Releases
 
-詳しくは [docs/plugin-development.md](docs/plugin-development.md)。
-
-## Release
-
-タグを push すると GitHub Actions が以下を作って Release に添付します。
+Pushing a version tag builds and uploads these assets with GitHub Actions:
 
 - `QuickTimePlayerPlus-<version>.pkg`
 - `QuickTimePlayerPlus-<version>.dmg`
 - `QuickTimePlayerPlus-<version>-plugins.zip`
 - `SHA256SUMS.txt`
 
-`.pkg` は Apple の app bundle を含みません。インストール時にローカルの QuickTime Player を
-コピーして `/Applications/QuickTime Player Plus.app` を作ります。
+The `.pkg` does not contain Apple's app bundle. At install time it copies the
+local system QuickTime Player and creates `/Applications/QuickTime Player Plus.app`.
 
-```sh
-git tag v0.1.0
-git push origin v0.1.0
+The package includes selectable plugin components in Installer's
+**Customize** screen. Every bundled plugin is selected by default.
+
+```mermaid
+flowchart TD
+  PKG[QuickTimePlayerPlus.pkg] --> Core[Core launcher + loader]
+  PKG --> MIDI[MIDI Plugin]
+  PKG --> Legacy[Legacy Media Plugin]
+  PKG --> Animated[Animated Image Plugin]
+  PKG --> Game[Game Audio Plugin]
+  PKG --> Sequence[Image Sequence Plugin]
+  MIDI --> Store[/Library/Application Support/QuickTimePlayerPlus/PlugIns]
+  Legacy --> Store
+  Animated --> Store
+  Game --> Store
+  Sequence --> Store
+  Core --> App[/Applications/QuickTime Player Plus.app]
 ```
 
-## 注意
+```sh
+git tag v0.1.1
+git push origin v0.1.1
+```
 
-- これは private API と dylib injection を使う実験です。macOS のアップデートで壊れます。
-- システム標準の `/System/Applications/QuickTime Player.app` は直接変更しません。
-- 変換系プラグインは一時ファイルを作ります。次回起動時に専用キャッシュを削除します。
-- 署名は ad-hoc です。配布物は Gatekeeper の警告が出ます。
+## Notes
+
+- This is an experiment based on private behavior and dylib injection. macOS
+  updates can break it.
+- The system `/System/Applications/QuickTime Player.app` is never modified.
+- Bridge plugins create temporary files under `$TMPDIR/QuickTimePlayerPlus`.
+- The current local install uses ad-hoc signing. Unsigned release builds may
+  trigger Gatekeeper warnings.
 
 ## Credits
 
-- [FluidSynth](https://www.fluidsynth.org/) — optional MIDI renderer used when installed locally.
-- [FFmpeg](https://ffmpeg.org/) — media bridge used by legacy, animated image, image sequence, and game audio plugins.
-- Apple QuickTime Player icon is used only as a local source icon on the user's Mac; this repository does not redistribute Apple app bundles.
+- [FluidSynth](https://www.fluidsynth.org/) for optional MIDI rendering.
+- [FFmpeg](https://ffmpeg.org/) for legacy media, animated image, image sequence,
+  and game audio bridge conversions.
+- Apple's QuickTime Player icon is used only as a local visual reference; this
+  repository does not redistribute Apple application bundles.

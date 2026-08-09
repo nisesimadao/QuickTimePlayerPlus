@@ -42,6 +42,15 @@ static NSArray<NSURL *> *QTPPluginSearchURLs(void)
     NSURL *appPluginsURL = [bundleURL URLByAppendingPathComponent:@"Contents/PlugIns/QuickTimePlayerPlus" isDirectory:YES];
     [urls addObject:appPluginsURL];
 
+    NSURL *systemSupportURL = [fileManager URLForDirectory:NSApplicationSupportDirectory
+                                                  inDomain:NSLocalDomainMask
+                                         appropriateForURL:nil
+                                                    create:NO
+                                                     error:nil];
+    if (systemSupportURL) {
+        [urls addObject:[systemSupportURL URLByAppendingPathComponent:@"QuickTimePlayerPlus/PlugIns" isDirectory:YES]];
+    }
+
     NSURL *applicationSupportURL = [fileManager URLForDirectory:NSApplicationSupportDirectory
                                                        inDomain:NSUserDomainMask
                                               appropriateForURL:nil
