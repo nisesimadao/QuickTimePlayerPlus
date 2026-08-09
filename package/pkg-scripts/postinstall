@@ -3,7 +3,7 @@ set -euo pipefail
 
 SUPPORT_DIR="/Library/Application Support/QuickTimePlayerPlus"
 SOURCE_APP="/System/Applications/QuickTime Player.app"
-TARGET_APP="/Applications/QuickTime Player+.app"
+TARGET_APP="/Applications/QuickTime Player Plus.app"
 CONTENTS_DIR="$TARGET_APP/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
@@ -15,18 +15,18 @@ if [[ ! -d "$SOURCE_APP" ]]; then
 fi
 
 if [[ -d "$TARGET_APP" ]]; then
-  backup="/Applications/QuickTime Player+.$(date +%Y%m%d-%H%M%S).app"
+  backup="/Applications/QuickTime Player Plus.$(date +%Y%m%d-%H%M%S).app"
   mv "$TARGET_APP" "$backup"
 fi
 
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PLUGIN_ROOT"
 cp "$SUPPORT_DIR/QuickTimePlayerPlus-Info.plist" "$CONTENTS_DIR/Info.plist"
-cp "$SUPPORT_DIR/QuickTimePlayerApplicationLauncher" "$MACOS_DIR/QuickTime Player+"
+cp "$SUPPORT_DIR/QuickTimePlayerApplicationLauncher" "$MACOS_DIR/QuickTime Player Plus"
 cp "$SOURCE_APP/Contents/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 cp -R "$SOURCE_APP" "$RESOURCES_DIR/QuickTime Player.app"
 cp "$SUPPORT_DIR/QuickTimePlayerPlus.dylib" "$PLUGIN_ROOT/QuickTimePlayerPlus.dylib"
 cp -R "$SUPPORT_DIR/PlugIns/"*.qtplugin "$PLUGIN_ROOT/"
-chmod +x "$MACOS_DIR/QuickTime Player+"
+chmod +x "$MACOS_DIR/QuickTime Player Plus"
 
 /usr/bin/codesign --force --deep --sign - "$RESOURCES_DIR/QuickTime Player.app"
 /usr/bin/codesign --force --deep --sign - "$TARGET_APP"

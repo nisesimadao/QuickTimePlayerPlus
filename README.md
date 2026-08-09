@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/banner-dark.svg">
-  <img alt="QuickTime Player+ — plugin loader and legacy media bridge for QuickTime Player" src="docs/banner-light.svg" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/banner-dark.png">
+  <img alt="QuickTime Player Plus — plugin loader and legacy media bridge for QuickTime Player" src="docs/banner-light.png" width="100%">
 </picture>
 
 [![CI](https://github.com/nisesimadao/QuickTimePlayerPlus/actions/workflows/ci.yml/badge.svg)](https://github.com/nisesimadao/QuickTimePlayerPlus/actions/workflows/ci.yml)
@@ -15,7 +15,7 @@ QuickTime Player にプラグイン機構を足す実験です。起動時に小
 
 > **非公式・再配布制約** — このリポジトリは Apple の QuickTime Player 本体を含みません。
 > Release の `.pkg` はインストール先 Mac にある `/System/Applications/QuickTime Player.app`
-> をその場で `/Applications/QuickTime Player+.app` へコピーし、自作ローダーとプラグインだけを
+> をその場で `/Applications/QuickTime Player Plus.app` へコピーし、自作ローダーとプラグインだけを
 > 追加します。Apple Inc. とは無関係です。
 
 ## まず試すなら
@@ -24,11 +24,11 @@ QuickTime Player にプラグイン機構を足す実験です。起動時に小
 git clone https://github.com/nisesimadao/QuickTimePlayerPlus.git
 cd QuickTimePlayerPlus
 make install-application
-open -n -a "/Applications/QuickTime Player+.app" ~/Downloads/example.mid
+open -n -a "/Applications/QuickTime Player Plus.app" ~/Downloads/example.mid
 ```
 
 `make install-application` は `/System/Applications/QuickTime Player.app` を
-`/Applications/QuickTime Player+.app` の内側へコピーし、自作 launcher / plugin loader /
+`/Applications/QuickTime Player Plus.app` の内側へコピーし、自作 launcher / plugin loader /
 プリインストールプラグインを組み込みます。
 
 ## 入っているもの
@@ -38,11 +38,63 @@ open -n -a "/Applications/QuickTime Player+.app" ~/Downloads/example.mid
 | パッチ / ローダー | `QuickTimePlayerPlus.dylib` | QuickTime 起動時に `*.qtplugin` を探して読み込む |
 | MIDI plugin | `QTPMIDIPlugin.qtplugin` | `.mid/.midi` を一時 `.caf` にレンダリングして QuickTime に渡す |
 | Legacy media plugin | `QTPTranscodePlugin.qtplugin` | Ogg / WebM / Matroska / WMV / WMA / AVI / DivX / Xvid / FLV を ffmpeg で QuickTime 向けへ変換 |
-| 管理画面 | app menu | `QuickTimePlayer+ Plugins...` で次回起動時の有効/無効を切り替える |
+| 管理画面 | app menu | `QuickTime Player Plus Plugins...` で次回起動時の有効/無効を切り替える |
 
 QuickTime 7 時代によく使われた Perian / Flip4Mac / XiphQT / DivX / Xvid 系の役割を、
 今の QuickTime の codec component として復活させるのではなく、プラグインごとの
 変換ブリッジとして実装しています。
+
+## 仕組み
+
+```mermaid
+flowchart LR
+  Finder[Finder / Open With] --> Launcher[QuickTime Player Plus.app]
+  Launcher -->|DYLD_INSERT_LIBRARIES| QuickTime[Bundled QuickTime Player]
+  QuickTime --> Loader[QuickTimePlayerPlus.dylib]
+  Loader --> PluginDir[Plugin folders]
+  PluginDir --> MIDI[QTPMIDIPlugin.qtplugin]
+  PluginDir --> Transcode[QTPTranscodePlugin.qtplugin]
+  MIDI --> CAF[Temporary CAF]
+  Transcode --> MP4[Temporary MP4/M4A]
+  CAF --> QuickTime
+  MP4 --> QuickTime
+```
+
+外側の `QuickTime Player Plus.app` は Finder から書類を受け取る launcher です。
+内側にコピーした Apple の QuickTime Player を、プラグインローダー付きで起動します。
+ローダーは `*.qtplugin` bundle を読み、各プラグインが必要な形式だけを一時メディアへ変換して、
+最後は QuickTime 標準の再生ウィンドウに戻します。
+
+## プラグインの置き場所と追加
+
+プリインストールプラグイン:
+
+```text
+QuickTime Player Plus.app/
+└── Contents/PlugIns/QuickTimePlayerPlus/
+    ├── QTPMIDIPlugin.qtplugin
+    └── QTPTranscodePlugin.qtplugin
+```
+
+ユーザー追加プラグイン:
+
+```text
+~/Library/Application Support/QuickTimePlayer+/PlugIns/
+```
+
+開発中だけ追加する場合:
+
+```sh
+QTP_PLUGIN_PATH="/path/to/PlugIns" open -n -a "/Applications/QuickTime Player Plus.app" file.mid
+```
+
+管理画面はアプリメニューの **QuickTime Player Plus Plugins...** から開きます。
+
+- チェックボックス: 次回起動時の有効/無効を切り替える
+- Add Plugin...: `.qtplugin` bundle をユーザープラグインフォルダへコピーする
+- Open Plugin Folder: ユーザープラグインフォルダを Finder で開く
+- Clear Render Caches: MIDI / transcode の一時ファイルを削除する
+- Set ffmpeg...: Legacy media plugin が使う `ffmpeg` 実行ファイルを指定する
 
 ## ビルド
 
@@ -65,8 +117,8 @@ make install-application
 開く:
 
 ```sh
-open -n -a "/Applications/QuickTime Player+.app"
-open -n -a "/Applications/QuickTime Player+.app" ~/Downloads/example.mid
+open -n -a "/Applications/QuickTime Player Plus.app"
+open -n -a "/Applications/QuickTime Player Plus.app" ~/Downloads/example.mid
 ```
 
 ## プラグインの形
@@ -85,8 +137,10 @@ void QTPPluginMain(void)
 ローダーは以下を探します。
 
 - `QTP_PLUGIN_PATH`
-- `QuickTime Player+.app/Contents/PlugIns/QuickTimePlayerPlus`
+- `QuickTime Player Plus.app/Contents/PlugIns/QuickTimePlayerPlus`
 - `~/Library/Application Support/QuickTimePlayer+/PlugIns`
+
+詳しくは [docs/plugin-development.md](docs/plugin-development.md)。
 
 ## Release
 
@@ -98,7 +152,7 @@ void QTPPluginMain(void)
 - `SHA256SUMS.txt`
 
 `.pkg` は Apple の app bundle を含みません。インストール時にローカルの QuickTime Player を
-コピーして `/Applications/QuickTime Player+.app` を作ります。
+コピーして `/Applications/QuickTime Player Plus.app` を作ります。
 
 ```sh
 git tag v0.1.0

@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>QuickTime Player+</string>
+    <string>QuickTime Player Plus</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
@@ -26,7 +26,7 @@
                 <string>flv</string>
             </array>
             <key>CFBundleTypeName</key>
-            <string>QuickTimePlayer+ Supported Media</string>
+            <string>QuickTime Player Plus Supported Media</string>
             <key>CFBundleTypeRole</key>
             <string>Viewer</string>
             <key>LSHandlerRank</key>
@@ -40,7 +40,7 @@
         </dict>
     </array>
     <key>CFBundleExecutable</key>
-    <string>QuickTime Player+</string>
+    <string>QuickTime Player Plus</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
@@ -48,7 +48,7 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>QuickTime Player+</string>
+    <string>QuickTime Player Plus</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

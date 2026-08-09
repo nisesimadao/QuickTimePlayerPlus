@@ -35,8 +35,8 @@ $(APPLICATION_LAUNCHER): src/QTPApplicationLauncher.m | $(BUILD_DIR)
 
 install-application: all
 	./script/build_application_bundle.sh
-	if [ -d "/Applications/QuickTime Player+.app" ]; then mv "/Applications/QuickTime Player+.app" "/Applications/QuickTime Player+.$$(date +%Y%m%d-%H%M%S).app"; fi
-	cp -R "dist/QuickTime Player+.app" "/Applications/QuickTime Player+.app"
+	if [ -d "/Applications/QuickTime Player Plus.app" ]; then mv "/Applications/QuickTime Player Plus.app" "/Applications/QuickTime Player Plus.$$(date +%Y%m%d-%H%M%S).app"; fi
+	cp -R "dist/QuickTime Player Plus.app" "/Applications/QuickTime Player Plus.app"
 
 $(MIDI_PLUGIN_EXECUTABLE): plugins/MIDIPlugin/QTPMIDIPlugin.m plugins/MIDIPlugin/Info.plist include/QTPPlugin.h | $(BUILD_DIR)
 	mkdir -p $(MIDI_PLUGIN_BUNDLE)/Contents/MacOS
@@ -51,11 +51,11 @@ $(TRANSCODE_PLUGIN_EXECUTABLE): plugins/TranscodePlugin/QTPTranscodePlugin.m plu
 	codesign --force --sign - $(TRANSCODE_PLUGIN_BUNDLE)
 
 install-plugins: all
-	mkdir -p "QuickTime Player+.app/Contents/PlugIns/QuickTimePlayerPlus"
-	rm -rf "QuickTime Player+.app/Contents/PlugIns/QuickTimePlayerPlus/QTPMIDIPlugin.qtplugin"
-	rm -rf "QuickTime Player+.app/Contents/PlugIns/QuickTimePlayerPlus/QTPTranscodePlugin.qtplugin"
-	cp -R $(MIDI_PLUGIN_BUNDLE) "QuickTime Player+.app/Contents/PlugIns/QuickTimePlayerPlus/"
-	cp -R $(TRANSCODE_PLUGIN_BUNDLE) "QuickTime Player+.app/Contents/PlugIns/QuickTimePlayerPlus/"
+	mkdir -p "QuickTime Player Plus.app/Contents/PlugIns/QuickTimePlayerPlus"
+	rm -rf "QuickTime Player Plus.app/Contents/PlugIns/QuickTimePlayerPlus/QTPMIDIPlugin.qtplugin"
+	rm -rf "QuickTime Player Plus.app/Contents/PlugIns/QuickTimePlayerPlus/QTPTranscodePlugin.qtplugin"
+	cp -R $(MIDI_PLUGIN_BUNDLE) "QuickTime Player Plus.app/Contents/PlugIns/QuickTimePlayerPlus/"
+	cp -R $(TRANSCODE_PLUGIN_BUNDLE) "QuickTime Player Plus.app/Contents/PlugIns/QuickTimePlayerPlus/"
 
 install-normal-launch: all
 	./script/install_normal_launch.sh

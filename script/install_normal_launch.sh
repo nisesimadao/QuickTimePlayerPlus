@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_BUNDLE="$ROOT_DIR/QuickTime Player+.app"
+APP_BUNDLE="$ROOT_DIR/QuickTime Player Plus.app"
 CONTENTS_DIR="$APP_BUNDLE/Contents"
 EXECUTABLE_DIR="$CONTENTS_DIR/MacOS"
 MAIN_EXECUTABLE="$EXECUTABLE_DIR/QuickTime Player"
@@ -43,8 +43,8 @@ if ! /usr/libexec/PlistBuddy -c "Print :CFBundleDocumentTypes" "$INFO_PLIST" | g
   /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:$next_index:NSDocumentClass string MGPlaybackDocument" "$INFO_PLIST"
 fi
 
-/usr/libexec/PlistBuddy -c "Set :CFBundleName QuickTime Player+" "$INFO_PLIST" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName QuickTime Player+" "$INFO_PLIST" 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :CFBundleName QuickTime Player Plus" "$INFO_PLIST" 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName QuickTime Player Plus" "$INFO_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.apple.QuickTimePlayerX" "$INFO_PLIST" 2>/dev/null || true
 
 codesign --force --deep --sign - "$APP_BUNDLE"

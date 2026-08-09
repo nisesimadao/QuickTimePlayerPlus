@@ -84,7 +84,7 @@
     NSError *error = nil;
     if (![task launchAndReturnError:&error]) {
         NSAlert *alert = [[NSAlert alloc] init];
-        alert.messageText = @"QuickTime Player+ could not launch QuickTime Player.";
+        alert.messageText = @"QuickTime Player Plus could not launch QuickTime Player.";
         alert.informativeText = error.localizedDescription ?: @"Unknown error";
         [alert runModal];
         [NSApp terminate:self];

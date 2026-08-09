@@ -208,7 +208,7 @@ static void QTPLoadPlugins(void)
                                                    styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                                                      backing:NSBackingStoreBuffered
                                                        defer:NO];
-    window.title = @"QuickTimePlayer+ Plugins";
+    window.title = @"QuickTime Player Plus Plugins";
     window.releasedWhenClosed = NO;
 
     NSStackView *stackView = [[NSStackView alloc] initWithFrame:NSZeroRect];
@@ -218,7 +218,7 @@ static void QTPLoadPlugins(void)
     stackView.edgeInsets = NSEdgeInsetsMake(18, 18, 18, 18);
     stackView.translatesAutoresizingMaskIntoConstraints = NO;
 
-    NSTextField *message = [NSTextField labelWithString:@"Enable or disable installed plugins. Changes apply the next time QuickTime Player+ starts."];
+    NSTextField *message = [NSTextField labelWithString:@"Enable or disable installed plugins. Changes apply the next time QuickTime Player Plus starts."];
     message.font = [NSFont systemFontOfSize:12];
     message.textColor = NSColor.secondaryLabelColor;
     message.lineBreakMode = NSLineBreakByWordWrapping;
@@ -385,13 +385,13 @@ static void QTPInstallPluginManagerMenuItem(void)
     }
 
     for (NSMenuItem *item in appMenu.itemArray) {
-        if ([item.title isEqualToString:@"QuickTimePlayer+ Plugins..."]) {
+        if ([item.title isEqualToString:@"QuickTime Player Plus Plugins..."]) {
             return;
         }
     }
 
     [appMenu addItem:[NSMenuItem separatorItem]];
-    NSMenuItem *managerItem = [[NSMenuItem alloc] initWithTitle:@"QuickTimePlayer+ Plugins..."
+    NSMenuItem *managerItem = [[NSMenuItem alloc] initWithTitle:@"QuickTime Player Plus Plugins..."
                                                          action:@selector(showWindowFromMenu:)
                                                   keyEquivalent:@","];
     managerItem.target = QTPSharedPluginManagerController;

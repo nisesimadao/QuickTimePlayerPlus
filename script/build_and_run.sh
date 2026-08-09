@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_BUNDLE="$ROOT_DIR/QuickTime Player+.app"
+APP_BUNDLE="$ROOT_DIR/QuickTime Player Plus.app"
 APP_EXECUTABLE="$APP_BUNDLE/Contents/MacOS/QuickTime Player"
 REAL_APP_EXECUTABLE="$APP_BUNDLE/Contents/MacOS/QuickTime Player.real"
 INJECTOR="$ROOT_DIR/build/QuickTimePlayerPlus.dylib"
