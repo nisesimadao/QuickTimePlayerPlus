@@ -257,6 +257,14 @@ static NSButton *QTPActionButton(NSString *title, id target, SEL action)
     return button;
 }
 
+static NSView *QTPFlexibleSpace(void)
+{
+    NSView *space = [[NSView alloc] initWithFrame:NSZeroRect];
+    space.translatesAutoresizingMaskIntoConstraints = NO;
+    [space setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    return space;
+}
+
 static NSView *QTPSeparator(void)
 {
     NSBox *separator = [[NSBox alloc] initWithFrame:NSZeroRect];
@@ -304,12 +312,12 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     NSMutableSet<NSString *> *disabledIdentifiers = QTPDisabledPluginIdentifiers();
     NSArray<NSDictionary<NSString *, id> *> *plugins = QTPInstalledPluginInfos();
 
-    NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 860, 580)
+    NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 900, 620)
                                                    styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                                                      backing:NSBackingStoreBuffered
                                                        defer:NO];
     window.title = QTPLocalized(@"Plugin Manager", @"プラグイン管理");
-    window.minSize = NSMakeSize(760, 500);
+    window.minSize = NSMakeSize(820, 540);
     window.releasedWhenClosed = NO;
 
     NSView *contentView = [[NSView alloc] initWithFrame:NSZeroRect];
@@ -319,8 +327,8 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     NSStackView *rootStack = [[NSStackView alloc] initWithFrame:NSZeroRect];
     rootStack.orientation = NSUserInterfaceLayoutOrientationVertical;
     rootStack.alignment = NSLayoutAttributeLeading;
-    rootStack.spacing = 18;
-    rootStack.edgeInsets = NSEdgeInsetsMake(22, 24, 24, 24);
+    rootStack.spacing = 20;
+    rootStack.edgeInsets = NSEdgeInsetsMake(24, 24, 24, 24);
     rootStack.translatesAutoresizingMaskIntoConstraints = NO;
     [contentView addSubview:rootStack];
 
@@ -339,14 +347,14 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     NSStackView *mainStack = [[NSStackView alloc] initWithFrame:NSZeroRect];
     mainStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     mainStack.alignment = NSLayoutAttributeTop;
-    mainStack.spacing = 22;
+    mainStack.spacing = 24;
     mainStack.translatesAutoresizingMaskIntoConstraints = NO;
     [rootStack addArrangedSubview:mainStack];
 
     NSStackView *pluginColumn = [[NSStackView alloc] initWithFrame:NSZeroRect];
     pluginColumn.orientation = NSUserInterfaceLayoutOrientationVertical;
     pluginColumn.alignment = NSLayoutAttributeLeading;
-    pluginColumn.spacing = 12;
+    pluginColumn.spacing = 14;
     pluginColumn.translatesAutoresizingMaskIntoConstraints = NO;
 
     NSStackView *pluginHeaderRow = [[NSStackView alloc] initWithFrame:NSZeroRect];
@@ -369,8 +377,8 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     NSStackView *pluginList = [[NSStackView alloc] initWithFrame:NSZeroRect];
     pluginList.orientation = NSUserInterfaceLayoutOrientationVertical;
     pluginList.alignment = NSLayoutAttributeLeading;
-    pluginList.spacing = 10;
-    pluginList.edgeInsets = NSEdgeInsetsMake(0, 0, 0, 8);
+    pluginList.spacing = 12;
+    pluginList.edgeInsets = NSEdgeInsetsMake(2, 0, 2, 10);
     pluginList.translatesAutoresizingMaskIntoConstraints = NO;
 
     for (NSDictionary<NSString *, id> *plugin in plugins) {
@@ -379,7 +387,7 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
 
         NSView *card = [[NSView alloc] initWithFrame:NSZeroRect];
         card.wantsLayer = YES;
-        card.layer.cornerRadius = 8;
+        card.layer.cornerRadius = 10;
         card.layer.borderWidth = 1;
         card.layer.borderColor = NSColor.separatorColor.CGColor;
         card.layer.backgroundColor = NSColor.controlBackgroundColor.CGColor;
@@ -388,15 +396,15 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
         NSStackView *cardStack = [[NSStackView alloc] initWithFrame:NSZeroRect];
         cardStack.orientation = NSUserInterfaceLayoutOrientationVertical;
         cardStack.alignment = NSLayoutAttributeLeading;
-        cardStack.spacing = 6;
-        cardStack.edgeInsets = NSEdgeInsetsMake(12, 12, 12, 12);
+        cardStack.spacing = 8;
+        cardStack.edgeInsets = NSEdgeInsetsMake(14, 16, 14, 16);
         cardStack.translatesAutoresizingMaskIntoConstraints = NO;
         [card addSubview:cardStack];
 
         NSStackView *nameRow = [[NSStackView alloc] initWithFrame:NSZeroRect];
         nameRow.orientation = NSUserInterfaceLayoutOrientationHorizontal;
         nameRow.alignment = NSLayoutAttributeCenterY;
-        nameRow.spacing = 8;
+        nameRow.spacing = 10;
         nameRow.translatesAutoresizingMaskIntoConstraints = NO;
 
         NSButton *checkbox = [NSButton checkboxWithTitle:plugin[@"name"] ?: @"Plugin" target:self action:@selector(togglePlugin:)];
@@ -405,12 +413,11 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
         checkbox.font = [NSFont systemFontOfSize:NSFont.systemFontSize weight:NSFontWeightSemibold];
         checkbox.translatesAutoresizingMaskIntoConstraints = NO;
         checkbox.toolTip = QTPLocalized(@"Changes apply the next time QuickTime Player Plus starts.", @"変更は次回の QuickTime Player Plus 起動時に反映されます。");
-        NSTextField *stateLabel = QTPLabel(enabled ? QTPLocalized(@"Enabled", @"有効") : QTPLocalized(@"Disabled", @"無効"), [NSFont systemFontOfSize:NSFont.smallSystemFontSize], enabled ? NSColor.systemGreenColor : NSColor.secondaryLabelColor);
         NSButton *settingsButton = QTPActionButton(QTPLocalized(@"Settings...", @"設定..."), self, @selector(showPluginSettings:));
         settingsButton.identifier = identifier;
         settingsButton.enabled = QTPPluginUsesMIDISettings(identifier) || QTPPluginUsesFFmpegSettings(identifier);
         [nameRow addArrangedSubview:checkbox];
-        [nameRow addArrangedSubview:stateLabel];
+        [nameRow addArrangedSubview:QTPFlexibleSpace()];
         [nameRow addArrangedSubview:settingsButton];
         [cardStack addArrangedSubview:nameRow];
 
@@ -434,7 +441,7 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
         [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor].active = YES;
         [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor].active = YES;
         [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor].active = YES;
-        [card.widthAnchor constraintEqualToConstant:540].active = YES;
+        [card.widthAnchor constraintEqualToAnchor:pluginList.widthAnchor constant:-10].active = YES;
         [pluginList addArrangedSubview:card];
     }
 
@@ -458,7 +465,7 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     NSStackView *settingsColumn = [[NSStackView alloc] initWithFrame:NSZeroRect];
     settingsColumn.orientation = NSUserInterfaceLayoutOrientationVertical;
     settingsColumn.alignment = NSLayoutAttributeLeading;
-    settingsColumn.spacing = 14;
+    settingsColumn.spacing = 16;
     settingsColumn.translatesAutoresizingMaskIntoConstraints = NO;
 
     NSTextField *maintenanceHeader = QTPLabel(QTPLocalized(@"Maintenance", @"メンテナンス"), [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
@@ -474,9 +481,9 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
 
     [mainStack addArrangedSubview:pluginColumn];
     [mainStack addArrangedSubview:settingsColumn];
-    [pluginColumn.widthAnchor constraintGreaterThanOrEqualToConstant:560].active = YES;
-    [settingsColumn.widthAnchor constraintGreaterThanOrEqualToConstant:260].active = YES;
-    [pluginScrollView.heightAnchor constraintGreaterThanOrEqualToConstant:360].active = YES;
+    [pluginColumn.widthAnchor constraintGreaterThanOrEqualToConstant:590].active = YES;
+    [settingsColumn.widthAnchor constraintGreaterThanOrEqualToConstant:250].active = YES;
+    [pluginScrollView.heightAnchor constraintGreaterThanOrEqualToConstant:410].active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         [rootStack.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
