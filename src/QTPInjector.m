@@ -19,6 +19,7 @@ static NSString * const QTPMIDISoundFontPathKey = @"QTPMIDISoundFontPath";
 - (void)chooseFFmpeg:(id)sender;
 - (void)chooseFluidSynth:(id)sender;
 - (void)chooseMIDISoundFont:(id)sender;
+- (void)showPluginSettings:(id)sender;
 @end
 
 static QTPPluginManagerController *QTPSharedPluginManagerController;
@@ -132,6 +133,31 @@ static NSURL *QTPUserPluginDirectoryURL(void)
                                                                           create:YES
                                                                            error:nil];
     return [applicationSupportURL URLByAppendingPathComponent:@"QuickTimePlayer+/PlugIns" isDirectory:YES];
+}
+
+static BOOL QTPUsesJapanese(void)
+{
+    NSArray<NSString *> *languages = [NSUserDefaults.standardUserDefaults objectForKey:@"AppleLanguages"];
+    NSString *primaryLanguage = languages.firstObject ?: NSLocale.preferredLanguages.firstObject ?: @"";
+    return [primaryLanguage hasPrefix:@"ja"];
+}
+
+static NSString *QTPLocalized(NSString *english, NSString *japanese)
+{
+    return QTPUsesJapanese() ? japanese : english;
+}
+
+static BOOL QTPPluginUsesMIDISettings(NSString *identifier)
+{
+    return [identifier containsString:@"midi"];
+}
+
+static BOOL QTPPluginUsesFFmpegSettings(NSString *identifier)
+{
+    return [identifier containsString:@"transcode"] ||
+           [identifier containsString:@"animated-image"] ||
+           [identifier containsString:@"game-audio"] ||
+           [identifier containsString:@"image-sequence"];
 }
 
 static void QTPLoadPluginBundleAtURL(NSURL *pluginURL, NSMutableSet<NSString *> *loadedBundleIdentifiers)
@@ -256,8 +282,9 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     NSTextField *titleLabel = QTPLabel(title, [NSFont systemFontOfSize:NSFont.systemFontSize weight:NSFontWeightSemibold], NSColor.labelColor);
     NSString *displayValue = value.length > 0 ? value : fallback;
     NSTextField *valueLabel = QTPLabel(displayValue, [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
-    valueLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
-    valueLabel.maximumNumberOfLines = 1;
+    valueLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    valueLabel.maximumNumberOfLines = 3;
+    valueLabel.selectable = YES;
     [labels addArrangedSubview:titleLabel];
     [labels addArrangedSubview:valueLabel];
 
@@ -281,7 +308,7 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
                                                    styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                                                      backing:NSBackingStoreBuffered
                                                        defer:NO];
-    window.title = @"Plugin Manager";
+    window.title = QTPLocalized(@"Plugin Manager", @"プラグイン管理");
     window.minSize = NSMakeSize(760, 500);
     window.releasedWhenClosed = NO;
 
@@ -298,7 +325,7 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     [contentView addSubview:rootStack];
 
     NSTextField *titleLabel = QTPLabel(@"QuickTime Player Plus", [NSFont systemFontOfSize:22 weight:NSFontWeightSemibold], NSColor.labelColor);
-    NSTextField *subtitleLabel = QTPLabel(@"Manage installed plugins, renderer paths, and temporary render caches.", [NSFont systemFontOfSize:NSFont.systemFontSize], NSColor.secondaryLabelColor);
+    NSTextField *subtitleLabel = QTPLabel(QTPLocalized(@"Manage installed plugins, per-plugin settings, and temporary render caches.", @"インストール済みプラグイン、プラグイン別設定、一時レンダーキャッシュを管理します。"), [NSFont systemFontOfSize:NSFont.systemFontSize], NSColor.secondaryLabelColor);
     subtitleLabel.maximumNumberOfLines = 1;
     NSStackView *headerStack = [[NSStackView alloc] initWithFrame:NSZeroRect];
     headerStack.orientation = NSUserInterfaceLayoutOrientationVertical;
@@ -327,8 +354,8 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     pluginHeaderRow.alignment = NSLayoutAttributeCenterY;
     pluginHeaderRow.spacing = 10;
     pluginHeaderRow.translatesAutoresizingMaskIntoConstraints = NO;
-    NSTextField *pluginHeader = QTPLabel(@"Installed Plugins", [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
-    NSTextField *pluginCount = QTPLabel([NSString stringWithFormat:@"%lu found", plugins.count], [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
+    NSTextField *pluginHeader = QTPLabel(QTPLocalized(@"Installed Plugins", @"インストール済みプラグイン"), [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
+    NSTextField *pluginCount = QTPLabel([NSString stringWithFormat:QTPLocalized(@"%lu found", @"%lu 個"), plugins.count], [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
     [pluginHeaderRow addArrangedSubview:pluginHeader];
     [pluginHeaderRow addArrangedSubview:pluginCount];
     [pluginColumn addArrangedSubview:pluginHeaderRow];
@@ -377,23 +404,28 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
         checkbox.state = enabled ? NSControlStateValueOn : NSControlStateValueOff;
         checkbox.font = [NSFont systemFontOfSize:NSFont.systemFontSize weight:NSFontWeightSemibold];
         checkbox.translatesAutoresizingMaskIntoConstraints = NO;
-        checkbox.toolTip = @"Changes apply the next time QuickTime Player Plus starts.";
-        NSTextField *stateLabel = QTPLabel(enabled ? @"Enabled" : @"Disabled", [NSFont systemFontOfSize:NSFont.smallSystemFontSize], enabled ? NSColor.systemGreenColor : NSColor.secondaryLabelColor);
+        checkbox.toolTip = QTPLocalized(@"Changes apply the next time QuickTime Player Plus starts.", @"変更は次回の QuickTime Player Plus 起動時に反映されます。");
+        NSTextField *stateLabel = QTPLabel(enabled ? QTPLocalized(@"Enabled", @"有効") : QTPLocalized(@"Disabled", @"無効"), [NSFont systemFontOfSize:NSFont.smallSystemFontSize], enabled ? NSColor.systemGreenColor : NSColor.secondaryLabelColor);
+        NSButton *settingsButton = QTPActionButton(QTPLocalized(@"Settings...", @"設定..."), self, @selector(showPluginSettings:));
+        settingsButton.identifier = identifier;
+        settingsButton.enabled = QTPPluginUsesMIDISettings(identifier) || QTPPluginUsesFFmpegSettings(identifier);
         [nameRow addArrangedSubview:checkbox];
         [nameRow addArrangedSubview:stateLabel];
+        [nameRow addArrangedSubview:settingsButton];
         [cardStack addArrangedSubview:nameRow];
 
         NSArray<NSString *> *extensions = plugin[@"extensions"];
-        NSString *extensionText = extensions.count > 0 ? [extensions componentsJoinedByString:@", "] : @"No declared extensions";
-        NSString *description = [plugin[@"description"] length] > 0 ? plugin[@"description"] : @"No description provided.";
+        NSString *extensionText = extensions.count > 0 ? [extensions componentsJoinedByString:@", "] : QTPLocalized(@"No declared extensions", @"宣言された拡張子なし");
+        NSString *description = [plugin[@"description"] length] > 0 ? plugin[@"description"] : QTPLocalized(@"No description provided.", @"説明がありません。");
         NSTextField *descriptionLabel = QTPLabel(description, [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
         descriptionLabel.maximumNumberOfLines = 2;
-        NSTextField *extensionLabel = QTPLabel([NSString stringWithFormat:@"Extensions: %@", extensionText], [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular], NSColor.tertiaryLabelColor);
+        NSTextField *extensionLabel = QTPLabel([NSString stringWithFormat:@"%@: %@", QTPLocalized(@"Extensions", @"拡張子"), extensionText], [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular], NSColor.tertiaryLabelColor);
         extensionLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         extensionLabel.maximumNumberOfLines = 1;
         NSTextField *pathLabel = QTPLabel(plugin[@"path"], [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.tertiaryLabelColor);
-        pathLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
-        pathLabel.maximumNumberOfLines = 1;
+        pathLabel.lineBreakMode = NSLineBreakByWordWrapping;
+        pathLabel.maximumNumberOfLines = 2;
+        pathLabel.selectable = YES;
         [cardStack addArrangedSubview:descriptionLabel];
         [cardStack addArrangedSubview:extensionLabel];
         [cardStack addArrangedSubview:pathLabel];
@@ -402,12 +434,12 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
         [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor].active = YES;
         [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor].active = YES;
         [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor].active = YES;
-        [card.widthAnchor constraintEqualToConstant:500].active = YES;
+        [card.widthAnchor constraintEqualToConstant:540].active = YES;
         [pluginList addArrangedSubview:card];
     }
 
     if (plugins.count == 0) {
-        NSTextField *empty = QTPLabel(@"No .qtplugin bundles were found.", [NSFont systemFontOfSize:NSFont.systemFontSize], NSColor.secondaryLabelColor);
+        NSTextField *empty = QTPLabel(QTPLocalized(@"No .qtplugin bundles were found.", @".qtplugin bundle が見つかりません。"), [NSFont systemFontOfSize:NSFont.systemFontSize], NSColor.secondaryLabelColor);
         [pluginList addArrangedSubview:empty];
     }
 
@@ -419,8 +451,8 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     pluginActions.alignment = NSLayoutAttributeCenterY;
     pluginActions.spacing = 8;
     pluginActions.translatesAutoresizingMaskIntoConstraints = NO;
-    [pluginActions addArrangedSubview:QTPActionButton(@"Add Plugin...", self, @selector(addPlugin:))];
-    [pluginActions addArrangedSubview:QTPActionButton(@"Open Folder", self, @selector(openPluginFolder:))];
+    [pluginActions addArrangedSubview:QTPActionButton(QTPLocalized(@"Add Plugin...", @"プラグインを追加..."), self, @selector(addPlugin:))];
+    [pluginActions addArrangedSubview:QTPActionButton(QTPLocalized(@"Open Folder", @"フォルダを開く"), self, @selector(openPluginFolder:))];
     [pluginColumn addArrangedSubview:pluginActions];
 
     NSStackView *settingsColumn = [[NSStackView alloc] initWithFrame:NSZeroRect];
@@ -429,32 +461,20 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     settingsColumn.spacing = 14;
     settingsColumn.translatesAutoresizingMaskIntoConstraints = NO;
 
-    NSTextField *settingsHeader = QTPLabel(@"Renderer Settings", [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
-    [settingsColumn addArrangedSubview:settingsHeader];
-
-    NSString *ffmpegPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFFmpegPathKey];
-    NSString *fluidSynthPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFluidSynthPathKey];
-    NSString *soundFontPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPMIDISoundFontPathKey];
-    [settingsColumn addArrangedSubview:QTPPathRow(@"ffmpeg", ffmpegPath, @"Auto-detect: /opt/homebrew/bin/ffmpeg or /usr/local/bin/ffmpeg", QTPActionButton(@"Choose...", self, @selector(chooseFFmpeg:)))];
-    [settingsColumn addArrangedSubview:QTPPathRow(@"FluidSynth", fluidSynthPath, @"Optional. Apple DLS is used when FluidSynth is unavailable.", QTPActionButton(@"Choose...", self, @selector(chooseFluidSynth:)))];
-    [settingsColumn addArrangedSubview:QTPPathRow(@"MIDI SoundFont", soundFontPath, @"Auto SoundFont/DLS lookup", QTPActionButton(@"Choose...", self, @selector(chooseMIDISoundFont:)))];
-
-    [settingsColumn addArrangedSubview:QTPSeparator()];
-
-    NSTextField *maintenanceHeader = QTPLabel(@"Maintenance", [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
-    NSTextField *maintenanceText = QTPLabel(@"Rendered MIDI, transcode, animated image, and image sequence outputs are temporary. Clear them if playback tests start using stale media.", [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
+    NSTextField *maintenanceHeader = QTPLabel(QTPLocalized(@"Maintenance", @"メンテナンス"), [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold], NSColor.labelColor);
+    NSTextField *maintenanceText = QTPLabel(QTPLocalized(@"Rendered MIDI, transcode, animated image, and image sequence outputs are temporary. Clear them if playback tests start using stale media.", @"MIDI、変換メディア、アニメーション画像、連番画像のレンダー結果は一時ファイルです。古い結果が使われる場合は削除してください。"), [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
     [settingsColumn addArrangedSubview:maintenanceHeader];
     [settingsColumn addArrangedSubview:maintenanceText];
-    [settingsColumn addArrangedSubview:QTPActionButton(@"Clear Render Caches", self, @selector(clearCaches:))];
+    [settingsColumn addArrangedSubview:QTPActionButton(QTPLocalized(@"Clear Render Caches", @"レンダーキャッシュを削除"), self, @selector(clearCaches:))];
 
     [settingsColumn addArrangedSubview:QTPSeparator()];
 
-    NSTextField *restartLabel = QTPLabel(@"Plugin enable/disable changes apply after restarting QuickTime Player Plus.", [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
+    NSTextField *restartLabel = QTPLabel(QTPLocalized(@"Plugin enable/disable changes apply after restarting QuickTime Player Plus. Renderer settings are available from each plugin card.", @"プラグインの有効/無効は QuickTime Player Plus の再起動後に反映されます。renderer 設定は各プラグインカードの「設定...」から変更します。"), [NSFont systemFontOfSize:NSFont.smallSystemFontSize], NSColor.secondaryLabelColor);
     [settingsColumn addArrangedSubview:restartLabel];
 
     [mainStack addArrangedSubview:pluginColumn];
     [mainStack addArrangedSubview:settingsColumn];
-    [pluginColumn.widthAnchor constraintGreaterThanOrEqualToConstant:520].active = YES;
+    [pluginColumn.widthAnchor constraintGreaterThanOrEqualToConstant:560].active = YES;
     [settingsColumn.widthAnchor constraintGreaterThanOrEqualToConstant:260].active = YES;
     [pluginScrollView.heightAnchor constraintGreaterThanOrEqualToConstant:360].active = YES;
 
@@ -478,6 +498,75 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     QTPSetPluginIdentifierEnabled(sender.identifier, sender.state == NSControlStateValueOn);
 }
 
+- (void)choosePathForDefaultsKey:(NSString *)defaultsKey
+                          prompt:(NSString *)prompt
+                         message:(NSString *)message
+{
+    NSOpenPanel *panel = [NSOpenPanel openPanel];
+    panel.canChooseFiles = YES;
+    panel.canChooseDirectories = NO;
+    panel.allowsMultipleSelection = NO;
+    panel.prompt = prompt;
+    panel.message = message;
+
+    if ([panel runModal] == NSModalResponseOK) {
+        [NSUserDefaults.standardUserDefaults setObject:panel.URL.path forKey:defaultsKey];
+        [self showWindow];
+    }
+}
+
+- (void)showPluginSettings:(NSButton *)sender
+{
+    NSString *identifier = sender.identifier ?: @"";
+    NSDictionary<NSString *, id> *targetPlugin = nil;
+    for (NSDictionary<NSString *, id> *plugin in QTPInstalledPluginInfos()) {
+        if ([plugin[@"identifier"] isEqualToString:identifier]) {
+            targetPlugin = plugin;
+            break;
+        }
+    }
+
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.messageText = [NSString stringWithFormat:QTPLocalized(@"%@ Settings", @"%@ の設定"), targetPlugin[@"name"] ?: QTPLocalized(@"Plugin", @"プラグイン")];
+    alert.informativeText = QTPLocalized(@"Paths are stored for the renderer used by this plugin. Existing QuickTime windows may need to be reopened.", @"このプラグインが使う renderer のパスを保存します。既に開いている QuickTime ウィンドウは開き直しが必要な場合があります。");
+    [alert addButtonWithTitle:QTPLocalized(@"Done", @"完了")];
+
+    NSStackView *settingsStack = [[NSStackView alloc] initWithFrame:NSMakeRect(0, 0, 520, 10)];
+    settingsStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    settingsStack.alignment = NSLayoutAttributeLeading;
+    settingsStack.spacing = 12;
+    settingsStack.translatesAutoresizingMaskIntoConstraints = NO;
+
+    if (QTPPluginUsesMIDISettings(identifier)) {
+        NSString *fluidSynthPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFluidSynthPathKey];
+        NSString *soundFontPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPMIDISoundFontPathKey];
+        [settingsStack addArrangedSubview:QTPPathRow(@"FluidSynth",
+                                                     fluidSynthPath,
+                                                     QTPLocalized(@"Optional. Apple DLS is used when FluidSynth is unavailable.", @"任意です。見つからない場合は Apple DLS fallback を使います。"),
+                                                     QTPActionButton(QTPLocalized(@"Choose...", @"選択..."), self, @selector(chooseFluidSynth:)))];
+        [settingsStack addArrangedSubview:QTPPathRow(QTPLocalized(@"MIDI SoundFont", @"MIDI SoundFont"),
+                                                     soundFontPath,
+                                                     QTPLocalized(@"Auto SoundFont/DLS lookup", @"SoundFont/DLS を自動検索"),
+                                                     QTPActionButton(QTPLocalized(@"Choose...", @"選択..."), self, @selector(chooseMIDISoundFont:)))];
+    }
+
+    if (QTPPluginUsesFFmpegSettings(identifier)) {
+        NSString *ffmpegPath = [NSUserDefaults.standardUserDefaults stringForKey:QTPFFmpegPathKey];
+        [settingsStack addArrangedSubview:QTPPathRow(@"ffmpeg",
+                                                     ffmpegPath,
+                                                     QTPLocalized(@"Auto-detect: /opt/homebrew/bin/ffmpeg or /usr/local/bin/ffmpeg", @"自動検出: /opt/homebrew/bin/ffmpeg または /usr/local/bin/ffmpeg"),
+                                                     QTPActionButton(QTPLocalized(@"Choose...", @"選択..."), self, @selector(chooseFFmpeg:)))];
+    }
+
+    if (settingsStack.arrangedSubviews.count == 0) {
+        [settingsStack addArrangedSubview:QTPLabel(QTPLocalized(@"This plugin has no editable settings.", @"このプラグインには編集できる設定がありません。"), [NSFont systemFontOfSize:NSFont.systemFontSize], NSColor.secondaryLabelColor)];
+    }
+
+    [settingsStack.widthAnchor constraintEqualToConstant:520].active = YES;
+    alert.accessoryView = settingsStack;
+    [alert runModal];
+}
+
 - (void)showWindowFromMenu:(__unused id)sender
 {
     [self showWindow];
@@ -489,8 +578,8 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
     panel.canChooseFiles = NO;
     panel.canChooseDirectories = YES;
     panel.allowsMultipleSelection = YES;
-    panel.prompt = @"Add";
-    panel.message = @"Choose .qtplugin bundles to copy into the user plugin folder.";
+    panel.prompt = QTPLocalized(@"Add", @"追加");
+    panel.message = QTPLocalized(@"Choose .qtplugin bundles to copy into the user plugin folder.", @"ユーザープラグインフォルダへコピーする .qtplugin bundle を選択してください。");
 
     if ([panel runModal] != NSModalResponseOK) {
         return;
@@ -537,47 +626,23 @@ static NSView *QTPPathRow(NSString *title, NSString *value, NSString *fallback, 
 
 - (void)chooseFFmpeg:(__unused id)sender
 {
-    NSOpenPanel *panel = [NSOpenPanel openPanel];
-    panel.canChooseFiles = YES;
-    panel.canChooseDirectories = NO;
-    panel.allowsMultipleSelection = NO;
-    panel.prompt = @"Use";
-    panel.message = @"Choose the ffmpeg executable used by the legacy media transcode plugin.";
-
-    if ([panel runModal] == NSModalResponseOK) {
-        [NSUserDefaults.standardUserDefaults setObject:panel.URL.path forKey:QTPFFmpegPathKey];
-        [self showWindow];
-    }
+    [self choosePathForDefaultsKey:QTPFFmpegPathKey
+                            prompt:QTPLocalized(@"Use", @"使用")
+                           message:QTPLocalized(@"Choose the ffmpeg executable used by this plugin.", @"このプラグインで使う ffmpeg 実行ファイルを選択してください。")];
 }
 
 - (void)chooseFluidSynth:(__unused id)sender
 {
-    NSOpenPanel *panel = [NSOpenPanel openPanel];
-    panel.canChooseFiles = YES;
-    panel.canChooseDirectories = NO;
-    panel.allowsMultipleSelection = NO;
-    panel.prompt = @"Use";
-    panel.message = @"Choose the fluidsynth executable used by the MIDI plugin.";
-
-    if ([panel runModal] == NSModalResponseOK) {
-        [NSUserDefaults.standardUserDefaults setObject:panel.URL.path forKey:QTPFluidSynthPathKey];
-        [self showWindow];
-    }
+    [self choosePathForDefaultsKey:QTPFluidSynthPathKey
+                            prompt:QTPLocalized(@"Use", @"使用")
+                           message:QTPLocalized(@"Choose the fluidsynth executable used by the MIDI plugin.", @"MIDI プラグインで使う fluidsynth 実行ファイルを選択してください。")];
 }
 
 - (void)chooseMIDISoundFont:(__unused id)sender
 {
-    NSOpenPanel *panel = [NSOpenPanel openPanel];
-    panel.canChooseFiles = YES;
-    panel.canChooseDirectories = NO;
-    panel.allowsMultipleSelection = NO;
-    panel.prompt = @"Use";
-    panel.message = @"Choose the SoundFont or DLS bank used by the MIDI plugin.";
-
-    if ([panel runModal] == NSModalResponseOK) {
-        [NSUserDefaults.standardUserDefaults setObject:panel.URL.path forKey:QTPMIDISoundFontPathKey];
-        [self showWindow];
-    }
+    [self choosePathForDefaultsKey:QTPMIDISoundFontPathKey
+                            prompt:QTPLocalized(@"Use", @"使用")
+                           message:QTPLocalized(@"Choose the SoundFont or DLS bank used by the MIDI plugin.", @"MIDI プラグインで使う SoundFont または DLS bank を選択してください。")];
 }
 
 @end

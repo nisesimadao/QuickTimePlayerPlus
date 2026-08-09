@@ -231,6 +231,42 @@ static void QTPImageSequenceSwizzleClass(Class controllerClass)
     }
 }
 
+static void QTPImageSequenceOpenStartupArguments(void)
+{
+    NSArray<NSString *> *arguments = NSProcessInfo.processInfo.arguments;
+    if (arguments.count < 2) {
+        return;
+    }
+
+    for (NSUInteger index = 1; index < arguments.count; index++) {
+        NSString *path = arguments[index];
+        if (path.length == 0 || [path hasPrefix:@"-"]) {
+            continue;
+        }
+
+        NSURL *url = [NSURL fileURLWithPath:path];
+        if (!QTPImageSequenceHandlesURL(url)) {
+            continue;
+        }
+
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            NSError *error = nil;
+            NSURL *renderedURL = QTPImageSequenceRenderURL(url, &error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (!renderedURL) {
+                    QTPLog(@"Startup image sequence render failed for %@: %@", url.path, error.localizedDescription);
+                    return;
+                }
+
+                [NSDocumentController.sharedDocumentController openDocumentWithContentsOfURL:renderedURL
+                                                                                    display:YES
+                                                                          completionHandler:^(__unused NSDocument *document, __unused BOOL documentWasAlreadyOpen, __unused NSError *openError) {
+                 }];
+            });
+        });
+    }
+}
+
 void QTPPluginMain(void)
 {
     static dispatch_once_t onceToken;
@@ -240,6 +276,7 @@ void QTPPluginMain(void)
         QTPImageSequenceCleanupCache();
         [NSNotificationCenter.defaultCenter addObserverForName:NSApplicationDidFinishLaunchingNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *notification) {
             QTPImageSequenceSwizzleClass(object_getClass(NSDocumentController.sharedDocumentController));
+            QTPImageSequenceOpenStartupArguments();
         }];
     });
 }

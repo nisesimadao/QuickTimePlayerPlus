@@ -9,6 +9,23 @@ MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 PLUGIN_ROOT="$CONTENTS_DIR/PlugIns/QuickTimePlayerPlus"
 
+add_plus_document_type() {
+  local plist="$1"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0 dict" "$plist"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:CFBundleTypeName string 'QuickTime Player Plus Supported Media'" "$plist"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:CFBundleTypeRole string Viewer" "$plist"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:LSHandlerRank string Alternate" "$plist"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:NSDocumentClass string MGPlaybackDocument" "$plist"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions array" "$plist"
+  for extension in mid midi ogg oga ogv webm mkv wmv wma avi divx xvid flv gif webp avif apng vgm vgz nsf spc psf psf2 minipsf minipsf2 png jpg jpeg tif tiff exr dpx; do
+    /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions: string $extension" "$plist"
+  done
+  /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:LSItemContentTypes array" "$plist"
+  for type in public.midi-audio public.audiovisual-content public.movie public.audio public.image public.png public.jpeg public.tiff public.data; do
+    /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:LSItemContentTypes: string $type" "$plist"
+  done
+}
+
 cd "$ROOT_DIR"
 make all
 
@@ -32,6 +49,7 @@ cp -R "$SOURCE_APP" "$RESOURCES_DIR/QuickTime Player.app"
 cp resources/AppIcon.icns "$RESOURCES_DIR/QuickTime Player.app/Contents/Resources/AppIcon.icns"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName QuickTime Player Plus" "$RESOURCES_DIR/QuickTime Player.app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleName QuickTime Player Plus" "$RESOURCES_DIR/QuickTime Player.app/Contents/Info.plist"
+add_plus_document_type "$RESOURCES_DIR/QuickTime Player.app/Contents/Info.plist"
 cp build/QuickTimePlayerPlus.dylib "$PLUGIN_ROOT/QuickTimePlayerPlus.dylib"
 cp -R build/PlugIns/*.qtplugin "$PLUGIN_ROOT/"
 chmod +x "$MACOS_DIR/QuickTime Player Plus"
