@@ -1,7 +1,7 @@
 # Plugin Development
 
-QuickTime Player Plus のプラグインは Objective-C の bundle です。拡張子は
-`.qtplugin` にしていますが、中身は通常の macOS bundle と同じです。
+QuickTime Player Plus のプラグインは、Objective-C で実装する bundle です。
+拡張子は `.qtplugin` ですが、内部構造は通常の macOS bundle と同じです。
 
 ## 最小構成
 
@@ -54,13 +54,12 @@ void QTPPluginMain(void)
 }
 ```
 
-`QTPPluginMain` がエントリポイントです。ローダーは bundle をロードした後、この symbol を探して
-一度だけ呼びます。
+`QTPPluginMain` がエントリポイントです。
+ローダーは bundle を読み込んだ後、この symbol を探して一度だけ呼び出します。
 
-## よくある実装パターン
+## 実装パターン
 
-QuickTime Player Plus のプラグインは、QuickTime の private decoder を直接増やすより、
-次のような橋渡しをする方が安定します。
+QuickTime Player の private decoder を直接追加するより、未対応形式を一時メディアへ変換して元の open 処理へ戻す構成を基本とします。
 
 ```mermaid
 sequenceDiagram
@@ -73,31 +72,30 @@ sequenceDiagram
   P->>Q: call original openDocument with temporary file
 ```
 
-実装済みプラグインもこの形です。
+既存のプラグインも同じ構成です。
 
-- `QTPMIDIPlugin`: `.mid/.midi` を `.caf` にレンダリング
-- `QTPTranscodePlugin`: Ogg / WebM / Matroska / WMV などを `.mp4` / `.m4a` に変換
-- `QTPAnimatedImagePlugin`: GIF / WebP / AVIF / APNG を `.mp4` に変換
-- `QTPGameAudioPlugin`: VGM / NSF / SPC / PSF などを `.m4a` に変換
-- `QTPImageSequencePlugin`: 連番画像を `.mp4` に変換
+- `QTPMIDIPlugin`：`.mid/.midi` を `.caf` にレンダリングします。
+- `QTPTranscodePlugin`：Ogg / WebM / Matroska / WMV などを `.mp4` / `.m4a` に変換します。
+- `QTPAnimatedImagePlugin`：GIF / WebP / AVIF / APNG を `.mp4` に変換します。
+- `QTPGameAudioPlugin`：VGM / NSF / SPC / PSF などを `.m4a` に変換します。
+- `QTPImageSequencePlugin`：連番画像を `.mp4` に変換します。
 
 ## NSDocumentController の hook
 
 QuickTime の書類 open は `NSDocumentController` / `MGDocumentController` を通ります。
-既存プラグインは `openDocumentWithContentsOfURL:display:completionHandler:` と
-`openDocumentWithContentsOfURL:display:error:` を swizzle しています。
+既存プラグインは `openDocumentWithContentsOfURL:display:completionHandler:` と `openDocumentWithContentsOfURL:display:error:` を swizzle しています。
 
-注意点:
+実装時は次の点に注意してください。
 
-- constructor 直後に `sharedDocumentController` を触らない
-  - QuickTime の nib が作る `MGDocumentController` より先に素の `NSDocumentController` が生成され、起動が壊れます
-- `NSApplicationDidFinishLaunchingNotification` 後に実インスタンスの class へ追加 hook する
-- 対象外の拡張子は必ず元実装へ戻す
-- 変換後の一時ファイルを開く時に自分自身の拡張子判定へ再突入しないようにする
+- constructor の直後に `sharedDocumentController` へアクセスしないでください。
+  QuickTime の nib が作る `MGDocumentController` より先に通常の `NSDocumentController` が生成され、起動処理を壊す場合があります。
+- `NSApplicationDidFinishLaunchingNotification` の後で、実インスタンスの class へ追加 hook を行います。
+- 対象外の拡張子は必ず元の実装へ渡します。
+- 変換後の一時ファイルを開く際に、自分自身の拡張子判定へ再入しないようにします。
 
 ## キャッシュ
 
-一時ファイルは `$TMPDIR/QuickTimePlayerPlus/<PluginName>` 配下に置くのが基本です。
+一時ファイルは、原則として `$TMPDIR/QuickTimePlayerPlus/<PluginName>` 配下へ保存します。
 起動時に前回分を削除してください。
 
 ```objc
@@ -105,19 +103,18 @@ NSURL *cacheURL = [[NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES
     URLByAppendingPathComponent:@"QuickTimePlayerPlus/MyPlugin" isDirectory:YES];
 ```
 
-ユーザーが管理画面の **Clear Render Caches** を押した場合は、
-`$TMPDIR/QuickTimePlayerPlus` 全体が削除されます。
+管理画面で **Clear Render Caches** を実行すると、`$TMPDIR/QuickTimePlayerPlus` 全体を削除します。
 
 ## 設定
 
-軽い設定は `NSUserDefaults` を使います。例:
+軽量な設定には `NSUserDefaults` を使用します。
 
 ```objc
 NSString *ffmpegPath = [NSUserDefaults.standardUserDefaults stringForKey:@"QTPFFmpegPath"];
 ```
 
-管理画面で扱う設定を増やす場合は、ローダー側の `QTPPluginManagerController` に UI を足します。
-プラグイン固有の重い設定が必要になったら、bundle identifier ごとの key prefix を使ってください。
+管理画面で扱う設定を追加する場合は、ローダー側の `QTPPluginManagerController` に UI を追加します。
+プラグイン固有の設定が多い場合は、bundle identifier を使った key prefix を付けてください。
 
 ```text
 local.quicktimeplayerplus.myplugin.SomeSetting
@@ -138,24 +135,24 @@ $(PLUGIN_EXECUTABLE): plugins/MyPlugin/MyPlugin.m plugins/MyPlugin/Info.plist in
 	codesign --force --sign - $(PLUGIN_BUNDLE)
 ```
 
-QuickTime 本体が `arm64e` なので、プラグインも `arm64e` で作ります。
+QuickTime 本体が `arm64e` で動作するため、プラグインも `arm64e` でビルドします。
 
 ## 配布
 
-単体配布なら `.qtplugin` bundle を zip します。ユーザーは管理画面の **Add Plugin...** から
-追加できます。
+単体で配布する場合は、`.qtplugin` bundle を ZIP にします。
+ユーザーは管理画面の **Add Plugin...** から追加できます。
 
-プリインストールにする場合は:
+プリインストールプラグインとして追加する場合は、次の作業を行います。
 
-1. `plugins/<PluginName>/` に source と `Info.plist` を置く
-2. `Makefile` に bundle target を追加
-3. `script/build_application_bundle.sh` / `script/package_release.sh` が拾う
-4. README の「入っているもの」に追加
+1. `plugins/<PluginName>/` に source と `Info.plist` を配置します。
+2. `Makefile` に bundle target を追加します。
+3. `script/build_application_bundle.sh` / `script/package_release.sh` の対象に追加します。
+4. README の「同梱コンポーネント」に追加します。
 
-## 次に作る候補
+## 追加候補
 
-- **Game / Console Audio Plugin**: `.vgm`, `.vgz`, `.nsf`, `.spc`, `.psf`
-- **Animated Image Plugin**: `.webp`, `.avif`, `.apng`
-- **Image Sequence Plugin**: 連番画像フォルダや `frame_%04d.png`
+- **Game / Console Audio Plugin**：`.vgm`, `.vgz`, `.nsf`, `.spc`, `.psf`
+- **Animated Image Plugin**：`.webp`, `.avif`, `.apng`
+- **Image Sequence Plugin**：連番画像フォルダや `frame_%04d.png`
 
-どれも「入力を一時 `.caf` / `.mp4` に変換して QuickTime に戻す」形が扱いやすいです。
+いずれも、入力を一時 `.caf` または `.mp4` へ変換し、QuickTime Player の通常の open 処理へ戻す構成を利用できます。
